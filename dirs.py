@@ -1,0 +1,1 @@
+inputPath = "./input_data/"
