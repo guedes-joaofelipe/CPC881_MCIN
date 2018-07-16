@@ -5,18 +5,21 @@ from copy       import copy
 
 class EvolutionStrategy:
     def __init__(self, dim=2, func_id=1, pop_size=20):
-        self.dim        = dim      # Problem dimensionality
-        self.xMin       = -100    # Search space limits
-        self.xMax       =  100    #
+        self.dim        = dim        # Problem dimensionality
+        self.xMin       = -100       # Search space limits
+        self.xMax       =  100       #
         self.pop_size   = pop_size   # Population size
         self.func_id    = func_id
-        # Mutation parameters
-        self.minSigma   = 0.0001
-        self.tau1 = 4*1/(np.sqrt(2*self.pop_size))
-        self.tau2 = 4*1/(np.sqrt(2*np.sqrt(self.pop_size)))
+        self.fitnessEval= 0          # Initial fitness evaluations
 
-        # Fitness Function
-        # problem.fitness(x) returns fitness function value
+        # Algorithm parameters
+        self.minSigma        = 0.0001
+        self.tau1            = 4*1/(np.sqrt(2*self.pop_size))
+        self.tau2            = 4*1/(np.sqrt(2*np.sqrt(self.pop_size)))
+        self.mutateProb      = 0.01
+        self.numTourneyPlays = 10
+
+        # Fitness Function definition
         if self.func_id < 23:
             self.problem = pg.problem(pg.cec2014(prob_id=self.func_id, dim=self.dim))
         else:
@@ -50,6 +53,17 @@ class EvolutionStrategy:
         self.population = self.set_state(initPopulation)
         return self.population.copy()
 
+    def get_fitness(self, x):
+        '''
+            Wrapper that returns fitness value for state input x and increments
+            number of fitness evaluations.
+
+            Argument: x. State vector of length (dim).
+
+            Returns : Fitness for given input state as evaluated by target function.
+        '''
+        self.fitnessEval +=1
+        return self.problem.fitness(x)[0]
 
     def set_state(self, newPopulation):
         '''
@@ -63,11 +77,8 @@ class EvolutionStrategy:
         '''
         updatedPopulation = newPopulation
 
-        def get_fitness(x):
-            return self.problem.fitness(x)[0]
-
         # Compute new Fitness
-        fitness = newPopulation.iloc[:, :self.dim].apply(get_fitness, axis=1).copy()
+        fitness = newPopulation.iloc[:, :self.dim].apply(self.get_fitness, axis=1).copy()
         updatedPopulation = updatedPopulation.assign(Fitness=fitness)
 
         return updatedPopulation.copy()
@@ -126,8 +137,13 @@ class EvolutionStrategy:
         self.childrenPopulation = self.set_state(newPop)
         return self.childrenPopulation.copy()
 
+    def generation(self):
+        self.mutate(mutateProb=self.mutateProb)
+        self.survivor_selection_tourney(numPlays=self.numTourneyPlays)
 
-def survivor_selection_tourney(self, numPlays=10):
+        return self.population
+
+    def survivor_selection_tourney(self, numPlays=10):
         '''
             Tournament selection
             Every specimen competes against each other in numPlays (q) = 10 plays.
@@ -143,21 +159,22 @@ def survivor_selection_tourney(self, numPlays=10):
         loseScore = -2
         # numParticipants = 2*self.pop_size   # Selection with parents and children
 
-        tourneyPop = pd.concat([self.childrenPopulation, self.population], axis=0)
-        tourneyPop["Score"] = np.zeros(numParticipants)
-
+        tourneyPop = pd.concat([self.childrenPopulation, self.population], axis=0, ignore_index=True)
         numParticipants = tourneyPop.shape[0]
+
+        tourneyPop["Score"] = np.zeros(numParticipants)
 
         for i in range(numParticipants):
             opponents = np.random.randint(0, numParticipants, size=numPlays)
 
-            currList = np.ones(numPlays)*tourneyPop.loc[i    , "Fitness"]
+            currList = np.ones(numPlays)*tourneyPop.loc[i, "Fitness"]
+            # print("Shape curr list: ", currList.shape)
             oppList  = tourneyPop.loc[opponents, "Fitness"].values
 
             ## Score changes of current contestant
             scoreList = np.zeros(numPlays)
-            scoreList += np.where(currList > oppList,  winScore, 0)
-            scoreList += np.where(currList < oppList,  loseScore, 0)
+            scoreList += np.where(currList < oppList,  winScore, 0)
+            scoreList += np.where(currList > oppList,  loseScore, 0)
             ## Uncomment for drawScore != 0
             # scoreList += np.where(currList == oppList, drawScore, 0)
 
@@ -168,11 +185,8 @@ def survivor_selection_tourney(self, numPlays=10):
 
         # Sort individuals by tourney score and keep the best
         tourneyPop.sort_values("Score", ascending=False, inplace=True)
-        newPopulation = tourneyPop.iloc[:self.pop_size, :].drop(labels="Score").copy().reset_index(drop=True)
+        newPopulation = tourneyPop.iloc[:self.pop_size, :].drop(labels="Score", axis=1).copy().reset_index(drop=True)
 
         self.population = self.set_state(newPopulation)
-
-        # print(tourneyPop.head(10))
-        # print(self.popList.head(10))
 
         return self.population.copy()

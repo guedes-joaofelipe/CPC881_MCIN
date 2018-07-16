@@ -1,4 +1,5 @@
 import numpy    as np
+import dirs
 
 def get_solutions(func_list=[1], dim=10):
     '''
