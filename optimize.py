@@ -52,3 +52,6 @@ def optimize(func_id=1, dim=2, max_f_evals='auto', target_error=10e-8, verbose=T
         print("Solution: {:.4f}\nDiff    : {:.4f}\nF Evals:   {}".format(solution, solution-lastMeanFit, es.fitnessEvals))
 
     return fitnessHist, error
+
+if __name__ == "__main__":
+    pass

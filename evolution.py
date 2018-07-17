@@ -75,6 +75,14 @@ class EvolutionStrategy:
 
             Returns: updatedPopulation, updated population DataFrame.
         '''
+        # Checks if states are inside search space
+        # If not, randomly initialize them
+        logicArray = np.logical_or(np.less(newPopulation.iloc[:, :self.dim], self.xMin),
+                                   np.greater(newPopulation.iloc[:, :self.dim], self.xMax))
+
+        newPopulation.iloc[:, :self.dim] = np.where(logicArray,
+        np.random.random()*(self.xMax - self.xMin) + self.xMin, newPopulation.iloc[:, :self.dim])
+
         updatedPopulation = newPopulation
 
         # Compute new Fitness
@@ -190,3 +198,6 @@ class EvolutionStrategy:
         self.population = self.set_state(newPopulation)
 
         return self.population.copy()
+
+if __name__ == "__main__":
+    pass
