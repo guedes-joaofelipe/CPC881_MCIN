@@ -16,7 +16,7 @@ class EvolutionStrategy:
         self.minSigma        = 0.0001
         self.tau1            = 4*1/(np.sqrt(2*self.pop_size))
         self.tau2            = 4*1/(np.sqrt(2*np.sqrt(self.pop_size)))
-        self.mutateProb      = 0.01
+        self.mutateProb      = 1.0
         self.numTourneyPlays = 10
 
         # Fitness Function definition
@@ -127,11 +127,10 @@ class EvolutionStrategy:
 
             # State mutation
             stateNoise = np.random.normal(size=self.dim)
-            # print("\nState Perturbation: \n{}".format(newSigma*stateNoise))
-            # print("\nNew Sigma: \n{}".format(newSigma))
+
             newState[:self.dim] = x[:self.dim] + newSigma*stateNoise
             newState[self.dim:] = newSigma
-            # print("\nNew X:\n", newState)
+
 
         return newState
 
@@ -165,10 +164,11 @@ class EvolutionStrategy:
         winScore  = +1
         drawScore =  0
         loseScore = -2
-        # numParticipants = 2*self.pop_size   # Selection with parents and children
 
+        # Selection with parents and children
         tourneyPop = pd.concat([self.childrenPopulation, self.population], axis=0, ignore_index=True)
-        numParticipants = tourneyPop.shape[0]
+
+        numParticipants = tourneyPop.shape[0] # Num parents + Num children
 
         tourneyPop["Score"] = np.zeros(numParticipants)
 
@@ -176,7 +176,7 @@ class EvolutionStrategy:
             opponents = np.random.randint(0, numParticipants, size=numPlays)
 
             currList = np.ones(numPlays)*tourneyPop.loc[i, "Fitness"]
-            # print("Shape curr list: ", currList.shape)
+
             oppList  = tourneyPop.loc[opponents, "Fitness"].values
 
             ## Score changes of current contestant

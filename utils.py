@@ -22,3 +22,16 @@ def get_solutions(func_id=1, dim=10):
         raise ValueError("f_{:2d} not yet implemented".format(func_id))
         return None
     return solution
+
+def save_to_latex(result1_path, result2_path):
+    import pandas   as pd
+
+    data1 = pd.read_hdf(result1_path)
+    # data2 = pd.read_hdf(result2_path)
+    grouped = data1.groupby(by='Run')
+
+    for group in grouped.groups:
+        print(group)
+
+
+    return data1
