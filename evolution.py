@@ -10,7 +10,7 @@ class EvolutionStrategy:
         self.xMax       =  100       #
         self.pop_size   = pop_size   # Population size
         self.func_id    = func_id
-        self.fitnessEval= 0          # Initial fitness evaluations
+        self.fitnessEvals= 0          # Initial fitness evaluations
 
         # Algorithm parameters
         self.minSigma        = 0.0001
@@ -62,7 +62,7 @@ class EvolutionStrategy:
 
             Returns : Fitness for given input state as evaluated by target function.
         '''
-        self.fitnessEval +=1
+        self.fitnessEvals +=1
         return self.problem.fitness(x)[0]
 
     def set_state(self, newPopulation):
