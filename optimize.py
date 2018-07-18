@@ -13,7 +13,7 @@ def optimize(func_id=1, dim=2, max_f_evals='auto', target_error=10e-8, verbose=T
         max_f_evals = 10000*dim
 
     numGenerations = 200
-    popSize        = 50
+    popSize        = 30
 
     es = EvolutionStrategy(dim=dim, func_id=func_id, pop_size=popSize)
     solution = get_solutions(func_id, dim)
@@ -31,7 +31,7 @@ def optimize(func_id=1, dim=2, max_f_evals='auto', target_error=10e-8, verbose=T
         # Save error and fitness history
         fitnessHist = fitnessHist.append(pop["Fitness"], sort=False)
         errorHist   = fitnessHist.copy() - solution
-        errorHist   = errorHist.apply(np.abs)
+        errorHist   = errorHist.apply(np.abs).reset_index(drop=True)
 
         bestError   = errorHist.iloc[-1,:].min()
         # Stop Conditions
@@ -39,14 +39,14 @@ def optimize(func_id=1, dim=2, max_f_evals='auto', target_error=10e-8, verbose=T
             break
 
         generation += 1
-
+    # print(generation)
     lastMeanFit = fitnessHist.iloc[generation-1, :].mean()
     lastBestFit = fitnessHist.iloc[generation-1, :].min()
 
     if verbose is True:
         print("\nMean Fitness: {:.4f}".format(lastMeanFit))
         print("Best Fitness: {:.4f}\n".format(lastBestFit))
-        print("Solution: {:.4f}\nDiff    : {:.4f}\nF Evals:   {}".format(solution, solution-lastMeanFit, es.fitnessEvals))
+        print("Solution: {:.4f}\nDiff    : {:.4f}\nF Evals:   {}\n".format(solution, solution-lastMeanFit, es.fitnessEvals))
 
     return errorHist, fitnessHist
 

@@ -59,7 +59,6 @@ if __name__ == "__main__":
             hist = pd.concat(hist, ignore_index=True)
             successRate = np.sum(np.where(np.less_equal(error, targetError), 1, 0))
 
-            # p.close()
 
         elapsed = time.perf_counter() - start
         successRate = (successRate/numRuns)*100
