@@ -23,15 +23,24 @@ def get_solutions(func_id=1, dim=10):
         return None
     return solution
 
-def save_to_latex(result1_path, result2_path):
+def load_data(path):
     import pandas   as pd
 
-    data1 = pd.read_hdf(result1_path)
-    # data2 = pd.read_hdf(result2_path)
-    grouped = data1.groupby(by='Run')
+    data = pd.read_hdf(path)
 
-    for group in grouped.groups:
-        print(group)
+    # print(data)
+    # print(data.shape)
+    return data
 
-
-    return data1
+# def save_to_latex(result1_path, result2_path):
+#     import pandas   as pd
+#
+#     data1 = pd.read_hdf(result1_path)
+#     # data2 = pd.read_hdf(result2_path)
+#     grouped = data1.groupby(by='Run')
+#
+#     for group in grouped.groups:
+#         print(group)
+#
+#
+#     return data1

@@ -20,8 +20,8 @@ def aux_optim(run_id=0, func_id=5, dim=2, max_f_evals='auto', target_error=10e-8
 
 
 if __name__ == "__main__":
-    # funcList = [1, 2, 6, 7, 9, 14]   # Assignment function list
-    funcList = [2]
+    # funcList = [2]
+    funcList = [1, 2, 6, 7, 9, 14]   # Assignment function list
     for funcId in funcList:
         print("\nFunction {:2d}\n".format(funcId))
 
@@ -69,4 +69,4 @@ if __name__ == "__main__":
         print("Success rate: {:.2f}%\n".format(successRate))
 
         # Save results
-        hist.to_hdf(dirs.resultsPath+"ES_func{}_runs{}_dim{}_succ_{:.2f}".format(funcId, numRuns, dim, successRate), "Only")
+        hist.to_hdf(dirs.resultsPath+"ES_func{}_runs{}_dim{}_succ_{:.2f}.hdf".format(funcId, numRuns, dim, successRate), "Only")
