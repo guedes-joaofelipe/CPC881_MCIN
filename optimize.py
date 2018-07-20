@@ -8,14 +8,14 @@ import dirs
 from evolution  import EvolutionStrategy
 from utils      import get_solutions
 
-def optimize(func_id=1, dim=2, max_f_evals='auto', target_error=10e-8, verbose=True):
+def optimize(algorithm, func_id=1, dim=2, max_f_evals='auto', target_error=10e-8, verbose=True):
     if max_f_evals == 'auto':
         max_f_evals = 10000*dim
 
     numGenerations = 200
     popSize        = 30
 
-    es = EvolutionStrategy(dim=dim, func_id=func_id, pop_size=popSize)
+    es = algorithm(dim=dim, func_id=func_id, pop_size=popSize)
     solution = get_solutions(func_id, dim)
 
     # Initialize variables
@@ -39,7 +39,7 @@ def optimize(func_id=1, dim=2, max_f_evals='auto', target_error=10e-8, verbose=T
             break
 
         generation += 1
-    # print(generation)
+    
     lastMeanFit = fitnessHist.iloc[generation-1, :].mean()
     lastBestFit = fitnessHist.iloc[generation-1, :].min()
 

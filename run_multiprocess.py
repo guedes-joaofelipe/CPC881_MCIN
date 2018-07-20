@@ -5,6 +5,7 @@ import pandas   as pd
 from tqdm       import tqdm
 
 from optimize   import optimize
+from evolution  import EvolutionStrategyMod
 import dirs
 
 
@@ -12,7 +13,7 @@ def aux_optim(run_id=0, func_id=5, dim=2, max_f_evals='auto', target_error=10e-8
     np.random.seed()
 
     print("Run ID: ", run_id)
-    errorHist, fitnessHist = optimize(func_id=func_id, dim=dim, max_f_evals=max_f_evals,
+    errorHist, fitnessHist = optimize(EvolutionStrategyMod, func_id=func_id, dim=dim, max_f_evals=max_f_evals,
                               target_error=target_error, verbose=True)
 
     errorHist["Run"] = np.ones(errorHist.shape[0], dtype=int)*run_id
@@ -20,8 +21,8 @@ def aux_optim(run_id=0, func_id=5, dim=2, max_f_evals='auto', target_error=10e-8
 
 
 if __name__ == "__main__":
-    # funcList = [2]
-    funcList = [1, 2, 6, 7, 9, 14]   # Assignment function list
+    funcList = [2]
+    # funcList = [1, 2, 6, 7, 9, 14]   # Assignment function list
     for funcId in funcList:
         print("\nFunction {:2d}\n".format(funcId))
 
@@ -33,7 +34,7 @@ if __name__ == "__main__":
         targetError = 1e-8
         max_f_evals = 'auto'
 
-        numProcesses= 4
+        numProcesses= 6
 
         # if numRuns % numProcesses != 0:
         #     raise ValueError("NumRuns must be multiple of numProcesses")
@@ -58,7 +59,6 @@ if __name__ == "__main__":
 
             hist = pd.concat(hist, ignore_index=True)
             successRate = np.sum(np.where(np.less_equal(error, targetError), 1, 0))
-
 
         elapsed = time.perf_counter() - start
         successRate = (successRate/numRuns)*100

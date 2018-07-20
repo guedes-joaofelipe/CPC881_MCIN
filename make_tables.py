@@ -7,10 +7,12 @@ from utils      import load_data
 import dirs
 
 targetError = 1e-8
-dim = 30
+dim = 10
 
 ## Table1: Error statistics per function
-folder = dirs.resultsPath+"dim"+str(dim)+"/"
+# folder = dirs.resultsPath+"dim"+str(dim)+"/"
+folder = "./tempResults/"
+
 errorTable = pd.DataFrame()
 for file in tqdm(glob(folder+"*")):
     file = file.replace("\\", "/")
@@ -39,9 +41,8 @@ for file in tqdm(glob(folder+"*")):
     data = pd.read_hdf(file)
 
     key = "F"+file.split("_")[1][-2:]
-
     # For each run, get evolution of best errors per generation
-    for run in range(0, 50):
+    for run in range(0, 9):
         index = (data['Run'] == run)
 
         subTable = pd.DataFrame(data.values[index, :])
