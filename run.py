@@ -34,7 +34,7 @@ if __name__ == "__main__":
     elapsed = time.perf_counter() - start
     successRate = (successRate/numRuns)*100
 
-    print(hist)
+    # print(hist)
     print("\nhist shape: ", hist.shape)
 
     print("\nElapsed time: {:.2f}s".format(elapsed) )

@@ -24,13 +24,17 @@ def get_solutions(func_id=1, dim=10):
     return solution
 
 def load_data(path):
+    #TODO: Make this a generic data-loading script.
+    # Currently works only for table1
     import pandas   as pd
 
     data = pd.read_hdf(path)
 
-    # print(data)
-    # print(data.shape)
-    return data
+    key = "F"+path.split("_")[1][-2:]
+
+    newData = data.drop('Run', axis=1).min(axis=1)
+    newData = pd.DataFrame(data={key: newData, 'Run': data['Run']})
+    return newData
 
 # def save_to_latex(result1_path, result2_path):
 #     import pandas   as pd
