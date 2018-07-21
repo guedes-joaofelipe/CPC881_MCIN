@@ -67,4 +67,4 @@ for file in tqdm(glob(folder+"*")):
 
     # Save as excel file
     savePath = dirs.tablesPath+"table2_{}_dim{}.xlsx".format(key, dim)
-    errorTable.to_excel(savePath, float_format="%.4f")
+    errorTable.to_excel(savePath, float_format="%.8f")
