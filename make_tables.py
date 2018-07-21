@@ -7,11 +7,12 @@ from utils      import load_data
 import dirs
 
 targetError = 1e-8
-dim = 10
+numRuns     = 50
+dim         = 10
 
 ## Table1: Error statistics per function
-# folder = dirs.resultsPath+"dim"+str(dim)+"/"
-folder = "./tempResults/"
+folder = dirs.resultsPath+"dim"+str(dim)+"/"
+# folder = "./tempResults/"
 
 errorTable = pd.DataFrame()
 for file in tqdm(glob(folder+"*")):
@@ -40,9 +41,12 @@ for file in tqdm(glob(folder+"*")):
     file = file.replace("\\", "/")
     data = pd.read_hdf(file)
 
+    data = data.fillna(value=1e15)
+
     key = "F"+file.split("_")[1][-2:]
+
     # For each run, get evolution of best errors per generation
-    for run in range(0, 9):
+    for run in range(0, numRuns):
         index = (data['Run'] == run)
 
         subTable = pd.DataFrame(data.values[index, :])
@@ -55,7 +59,6 @@ for file in tqdm(glob(folder+"*")):
 
         # Get only the best individuals
         subTable = subTable.iloc[:, :-1].min(axis=1)
-
         # Append Run data to the table
         errorTable['Run {:2d}'.format(run)] = subTable.iloc[fesIndex]
 
