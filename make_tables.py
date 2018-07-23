@@ -8,14 +8,16 @@ import dirs
 
 targetError = 1e-8
 numRuns     = 50
+
 dim         = 10
+algorithm = "ES"
 
 ## Table1: Error statistics per function
-folder = dirs.resultsPath+"dim"+str(dim)+"/"
-# folder = "./tempResults/"
+# folder = "./resultsaux/"
+folder = dirs.resultsPath+algorithm+"/"
 
 errorTable = pd.DataFrame()
-for file in tqdm(glob(folder+"*")):
+for file in tqdm(glob(folder+"*dim"+str(dim)+"*")):
     file = file.replace("\\", "/")
     data = load_data(file)
 
@@ -32,16 +34,18 @@ table1 = pd.DataFrame(data={'Best': errorTable.min(axis=1), 'Worst':errorTable.m
                             "Std": errorTable.std(axis=1), "Success Rate": successTable})
 
 # Save as excel file
-savePath = dirs.tablesPath+"table1_dim{}.xlsx".format(dim)
-table1.to_excel(savePath, float_format="%.4f")
+savePath = dirs.tablesPath+"{}_table1_dim{}.xlsx".format(algorithm, dim)
+table1.to_excel(savePath, float_format="%.6f", index_label="F#")
 
 ## Table2: Best error evolution per generation per function
-errorTable = pd.DataFrame()
 for file in tqdm(glob(folder+"*")):
     file = file.replace("\\", "/")
-    data = pd.read_hdf(file)
 
-    data = data.fillna(value=1e15)
+    data = pd.read_hdf(file)
+    errorTable = pd.DataFrame()
+
+    fillVal = 1e15
+    data = data.fillna(value=fillVal)
 
     key = "F"+file.split("_")[1][-2:]
 
@@ -58,13 +62,17 @@ for file in tqdm(glob(folder+"*")):
         fesIndex = fesIndex.round()
 
         # Get only the best individuals
-        subTable = subTable.iloc[:, :-1].min(axis=1)
+        subTable = subTable.iloc[:, :-1].min(axis=1, skipna=True)
+
         # Append Run data to the table
-        errorTable['Run {:2d}'.format(run)] = subTable.iloc[fesIndex]
+        errorTable['Run {:2d}'.format(run)] = subTable.iloc[fesIndex.astype(int)]
+
+    print("\n", key)
+    print(errorTable)
 
     # Add a column with each function's mean error over all runs
-    errorTable["Mean"] = errorTable.mean(axis=1)
+    errorTable["Mean"] = errorTable.mean(axis=1, skipna=True)
 
     # Save as excel file
-    savePath = dirs.tablesPath+"table2_{}_dim{}.xlsx".format(key, dim)
-    errorTable.to_excel(savePath, float_format="%.8f")
+    savePath = dirs.tablesPath+"{}_table2_{}_dim{}.xlsx".format(algorithm, key, dim)
+    errorTable.to_excel(savePath, float_format="%.8f", index_label='Gen')
