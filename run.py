@@ -42,4 +42,4 @@ if __name__ == "__main__":
     print("\nElapsed time: {:.2f}s".format(elapsed) )
     print("Success rate: {:.2f}%".format(successRate))
 
-    hist.to_hdf(dirs.resultsPath+"ES_func{}_runs{}_dim{}_succ_{:.2f}.hdf".format(funcId, numRuns, dim, successRate), "Only")
+    hist.to_hdf(dirs.results+"ES_func{}_runs{}_dim{}_succ_{:.2f}.hdf".format(funcId, numRuns, dim, successRate), "Only")

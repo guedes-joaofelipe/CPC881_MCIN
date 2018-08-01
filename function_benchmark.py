@@ -15,7 +15,7 @@ print("\n")
 for i in funcList:
     if i < 23:
         prob = pg.problem(pg.cec2014(prob_id=i, dim=dim))
-        shift_data = np.loadtxt(dirs.inputPath+"shift_data_{}.txt".format(i))
+        shift_data = np.loadtxt(dirs.input+"shift_data_{}.txt".format(i))
 
         print("f_{:2d}(0)  = {:.6f}".format(i, prob.fitness(x)[0]))
         print("f_{:2d}(x*) = {:.6f}\n".format(i, prob.fitness(shift_data[:dim])[0]))
@@ -23,7 +23,7 @@ for i in funcList:
     if i >= 23:
         print("f_{:2d} not yet implemented".format(i))
         # prob = pg.problem(pg.cec2014(prob_id=i, dim=dim))
-        # shift_data = np.loadtxt(dirs.inputPath+"shift_data_{}.txt".format(i))
+        # shift_data = np.loadtxt(dirs.input+"shift_data_{}.txt".format(i))
         #
         #
         # print("f_{:2d}(0)  = {:.6f}".format(i, prob.fitness(x)[0]))

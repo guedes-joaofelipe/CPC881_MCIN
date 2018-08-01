@@ -1,17 +1,23 @@
 # Define project paths
-inputPath   = "./input_data/"
-resultsPath = "./results/"
-tablesPath  = "./tables/"
+input   = "./input_data/"
+results = "./results/"
+tables  = "./tables/"
+figures = "../figures/"
 
 import os
 
 # Create folders
 try:
-    os.makedirs(resultsPath)
+    os.makedirs(results)
 except OSError:
     pass
 
 try:
-    os.makedirs(tablesPath)
+    os.makedirs(tables)
+except OSError:
+    pass
+
+try:
+    os.makedirs(figures)
 except OSError:
     pass

@@ -3,7 +3,7 @@ import dirs
 
 def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
     ## Table1: Error statistics per function
-    folder = dirs.resultsPath+algorithm+"/"
+    folder = dirs.results+algorithm+"/"
 
     print("Input: {}\nAlgorithm: {}\nDim: {}\nNum Runs: {}\nTarget Error: {}".format(folder, algorithm, dim, num_runs, target_error))
 
@@ -25,7 +25,7 @@ def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
                                 "Std": errorTable.std(axis=1), "Success Rate": successTable})
 
     # Save as excel file
-    savePath = dirs.tablesPath+"{}_table1_dim{}.xlsx".format(algorithm, dim)
+    savePath = dirs.tables+"{}_table1_dim{}.xlsx".format(algorithm, dim)
     table1.to_excel(savePath, float_format="%.6f", index_label="F#")
 
     ## Table2: Best error evolution per generation per function
@@ -66,7 +66,7 @@ def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
         errorTable["Mean"] = errorTable.mean(axis=1, skipna=True)
 
         # Save as excel file
-        savePath = dirs.tablesPath+"{}_table2_{}_dim{}.xlsx".format(algorithm, key, dim)
+        savePath = dirs.tables+"{}_table2_{}_dim{}.xlsx".format(algorithm, key, dim)
         errorTable.to_excel(savePath, float_format="%.8f", index_label='Gen')
 
         return True
@@ -85,7 +85,7 @@ def get_solutions(func_id=1, dim=10):
 
     if func_id < 23:
         prob = pg.problem(pg.cec2014(prob_id=func_id, dim=dim))
-        shift_data = np.loadtxt(dirs.inputPath+"shift_data_{}.txt".format(func_id))
+        shift_data = np.loadtxt(dirs.input+"shift_data_{}.txt".format(func_id))
 
         solution = prob.fitness(shift_data[:dim])[0]
 
