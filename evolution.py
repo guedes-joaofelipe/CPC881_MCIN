@@ -202,7 +202,7 @@ class EvolutionStrategyMod:
             self.popReduce = 1
         elif (self.popReduce == 1) and (self.pop_size > self.min_pop):
             self.popReduce = 0
-            self.pop_size -= 1
+            self.pop_size = self.pop_size - 1
 
         newPopulation = tourneyPop.iloc[:self.pop_size, :].drop(labels="Score", axis=1).copy().reset_index(drop=True)
 
