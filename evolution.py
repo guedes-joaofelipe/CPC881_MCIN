@@ -3,17 +3,110 @@ import pandas   as pd
 import pygmo    as pg
 from copy       import copy
 
-class EvolutionStrategyMod:
+class EvolutionaryAlgorithm:
+    def __init__(self, dim=2, pop_size=10):
+        self.dim            = dim
+        self.pop_size       = pop_size
+
+
+        self.fitnessEvals   = 0
+
+class DifferentialEvolution(EvolutionaryAlgorithm):
     def __init__(self, dim=2, func_id=1, pop_size=100):
-        self.dim        = dim        # Problem dimensionality
+        # Initialize superclass
+        super().__init__(dim, pop_size)
         self.xMin       = -100       # Search space limits
         self.xMax       =  100       #
-        self.pop_size   = pop_size   # Population size
+
+        self.func_id    = func_id
+
+        # Fitness Function definition
+        if self.func_id < 23:
+            self.problem = pg.problem(pg.cec2014(prob_id=self.func_id, dim=self.dim))
+        else:
+            raise ValueError("f_{:2d} not yet implemented".format(self.func_id))
+            return -1
+
+        # Initialize population DataFrame and compute initial Fitness
+        self.init_states()
+
+    def init_states(self):
+        '''
+            Randomly initialize states and sigma values following a uniform initialization
+            between limits xMax and xMin. Assign state and fitness values to self.population.
+
+            population is a DataFrame with one row per individual and two columns per
+            dimension and one extra for fitness values.
+
+            Arguments: None
+
+            Returns: self.population, DataFrame with dimensions (population size) by (2*dimension + 1).
+        '''
+
+        x = np.zeros((self.pop_size, 2*self.dim))
+
+        x[:, :self.dim]   = np.random.random((self.pop_size, self.dim))*(self.xMax - self.xMin) + self.xMin
+        x[:, self.dim:]   = np.random.random((self.pop_size, self.dim))
+
+        initPopulation = pd.DataFrame(x)
+
+        self.population = self.set_state(initPopulation)
+        return self.population.copy()
+
+    def set_state(self, newPopulation):
+        '''
+            Function to attribute new values to a population DataFrame.
+            Guarantees correct fitness values for each state update.
+            Includes specimen viability evaluation and treatment.
+
+            Arguments:
+                newPopulation   : Population DataFrame with new state values
+
+            Returns: updatedPopulation, updated population DataFrame.
+        '''
+        # Viability Treatment
+        # Checks if states are inside search space, If not, randomly initialize them
+        logicArray = np.logical_or(np.less(newPopulation.iloc[:, :self.dim], self.xMin),
+                                   np.greater(newPopulation.iloc[:, :self.dim], self.xMax))
+
+        newPopulation.iloc[:, :self.dim] = np.where(logicArray,
+        np.random.random()*(self.xMax - self.xMin) + self.xMin, newPopulation.iloc[:, :self.dim])
+
+        updatedPopulation = newPopulation
+
+        # Compute new Fitness
+        fitness = newPopulation.iloc[:, :self.dim].apply(self.get_fitness, axis=1).copy()
+        updatedPopulation = updatedPopulation.assign(Fitness=fitness)
+
+        return updatedPopulation.copy()
+
+    def get_fitness(self, x):
+        '''
+            Wrapper that returns fitness value for state input x and increments
+            number of fitness evaluations.
+
+            Argument: x. State vector of length (dim).
+
+            Returns : Fitness for given input state as evaluated by target function.
+        '''
+        self.fitnessEvals +=1
+        return self.problem.fitness(x)[0]
+
+
+
+class EvolutionStrategyMod(EvolutionaryAlgorithm):
+    def __init__(self, dim=2, func_id=1, pop_size=100):
+        super().__init__(dim, pop_size)
+
+        # self.dim        = dim        # Problem dimensionality
+        # self.pop_size   = pop_size   # Population size
+        self.xMin       = -100       # Search space limits
+        self.xMax       =  100       #
         self.min_pop    = int(pop_size*0.1)
         self.popReduce  = 0
 
         self.func_id    = func_id
-        self.fitnessEvals= 0          # Initial fitness evaluations
+        # self.fitnessEvals= 0          # Initial fitness evaluations
 
         # Algorithm parameters
         self.minSigma        = 0.0001
@@ -31,7 +124,6 @@ class EvolutionStrategyMod:
 
         # Initialize population DataFrame and compute initial Fitness
         self.init_states()
-
 
     def init_states(self):
         '''

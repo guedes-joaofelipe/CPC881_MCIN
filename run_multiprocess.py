@@ -1,8 +1,8 @@
-from multiprocessing import Pool
 import time
-import numpy    as np
-import pandas   as pd
-from tqdm       import tqdm
+import numpy            as np
+import pandas           as pd
+from tqdm               import tqdm
+from multiprocessing    import Pool
 
 from optimize   import optimize
 from evolution  import EvolutionStrategyMod
@@ -10,6 +10,9 @@ import dirs
 
 
 def aux_optim(run_id=0, func_id=5, dim=2, max_f_evals='auto', target_error=10e-8):
+    '''
+        Auxiliary function for multiprocessing.
+    '''
     np.random.seed()
 
     print("Run ID: ", run_id)
@@ -28,17 +31,12 @@ if __name__ == "__main__":
 
         # Problem and Evaluation parameters
         dim         = 10
-        # funcId      = 5 # Shifted and Rotated Ackley Function
         numRuns     = 51
         successRate = 0
         targetError = 1e-8
         max_f_evals = 'auto'
 
         numProcesses= 6
-
-        # if numRuns % numProcesses != 0:
-        #     raise ValueError("NumRuns must be multiple of numProcesses")
-        #     break
 
         start = time.perf_counter()
         hist = pd.DataFrame()

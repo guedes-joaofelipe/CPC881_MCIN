@@ -6,7 +6,7 @@ from tqdm       import tqdm
 
 import dirs
 from evolution  import EvolutionStrategy
-from utils      import get_solutions
+from utils      import get_solution
 
 def optimize(algorithm, func_id=1, dim=2, max_f_evals='auto', target_error=10e-8, verbose=True):
     if max_f_evals == 'auto':
@@ -15,8 +15,8 @@ def optimize(algorithm, func_id=1, dim=2, max_f_evals='auto', target_error=10e-8
     numGenerations = 200
     popSize        = 30
 
-    es = algorithm(dim=dim, func_id=func_id, pop_size=popSize)
-    solution = get_solutions(func_id, dim)
+    alg = algorithm(dim=dim, func_id=func_id, pop_size=popSize)
+    solution = get_solution(func_id, dim)
 
     # Initialize variables
     fitnessHist = pd.DataFrame()
@@ -25,8 +25,8 @@ def optimize(algorithm, func_id=1, dim=2, max_f_evals='auto', target_error=10e-8
     print("")
     # do .. while loop
     while True:
-        es.generation()
-        pop = es.population
+        alg.generation()
+        pop = alg.population
 
         # Save error and fitness history
         fitnessHist = fitnessHist.append(pop["Fitness"], sort=False)
@@ -35,11 +35,12 @@ def optimize(algorithm, func_id=1, dim=2, max_f_evals='auto', target_error=10e-8
 
         bestError   = errorHist.iloc[-1,:].min()
         # Stop Conditions
-        if (es.fitnessEvals >= max_f_evals) or (bestError <= target_error):
+        if (alg.fitnessEvals >= max_f_evals) or (bestError <= target_error):
             break
 
         generation += 1
-    
+
+    # Mean and Best fitness values of last generation
     lastMeanFit = fitnessHist.iloc[generation-1, :].mean()
     lastBestFit = fitnessHist.iloc[generation-1, :].min()
 
