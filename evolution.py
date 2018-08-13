@@ -45,8 +45,6 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
 
             Returns: self.population, DataFrame with dimensions (population size) by (2*dimension + 1).
         '''
-
-        # specimen = np.zeros((self.pop_size, self.dim))
         specimen = np.random.random((self.pop_size, self.dim))*(self.xMax - self.xMin) + self.xMin
 
         initPopulation = pd.DataFrame(specimen)
@@ -71,7 +69,8 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
             Returns: updatedPopulation, a population DataFrame with the input values
             checked for viability and updated fitness column.
         '''
-        # Viability Treatment
+        # TODO: Split set_state and Exception Treatment in different methods
+        # Exception Treatment
         # Checks if states are inside search space, If not, randomly initialize them
         logicArray = np.logical_or(np.less(newPopulation, self.xMin),
                                    np.greater(newPopulation, self.xMax))
@@ -142,15 +141,60 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
 
         # Mutate every specimen using scheme passed to mutationScheme
         mutationScheme = self.mutation_best_1
-        newPopulation = pd.DataFrame(list(map(mutationScheme, self.population.T, indexList, parameterList))).reset_index(drop=True)
+        self.mutatedPopulation = pd.DataFrame(list(map(mutationScheme, self.population.T, indexList, parameterList))).reset_index(drop=True)
 
-        self.mutatedPopulation = self.set_state(newPopulation, substitute='edge')
+        # self.mutatedPopulation = self.set_state(newPopulation, substitute='edge')
 
         return self.mutatedPopulation
 
-    def survivor_selection(self, mutatedPopulation):
+    def crossover_binomial(self, mutatedPopulation):
         '''
-            DE elitist survivor selection. A mutant vector is carried over to the next
+            DE binomial crossover. Compose a trial vector based on each mutated
+            vector and its corresponding parent. The new vector is composed following:
+
+                u_ij = v_ij,  if j == K or rand(0,1) <= cross_rate
+                       x_ij,  else
+
+            The trial vector will use the mutated value if probability is within
+            cross_rate or its columns is randomly selected by K = randint(0, dim).
+
+            Returns self.trialPopulation DataFrame with updated fitness column
+        '''
+        # Create random number arrays
+        randomArray = np.random.rand(self.mutatedPopulation.shape[0], self.mutatedPopulation.shape[1])
+        randomK     = np.random.randint(0, self.dim, size=self.pop_size)
+        maskArray   = np.arange(self.mutatedPopulation.shape[1])
+
+        # Reshape and tile arrays
+        randomK.shape   = (self.pop_size, 1)
+        randomK         = np.tile(randomK, (1, self.dim))
+
+        maskArray.shape = (1, self.mutatedPopulation.shape[1])
+        maskArray       = np.tile(maskArray, (self.pop_size, 1))
+
+        # print(randomArray.shape)
+        # print(randomK.shape)
+        # print(maskArray.shape)
+        # input()
+
+        newPopulation = self.population.drop(labels='Fitness', axis=1)
+
+        # Substitute new values for randomArray smaller than Crossover rate
+        newPopulation = newPopulation.where(np.less_equal(randomArray, self.cross_rate),
+                                            other=self.mutatedPopulation)
+
+        # Substitute new values for K == columns, guaranteeing at least one substitution
+        newPopulation = newPopulation.where(np.not_equal(randomK, maskArray),
+                                            other=self.mutatedPopulation)
+
+        # Compute new fitness values and treat exceptions
+        self.trialPopulation = self.set_state(newPopulation, substitute='edge')
+
+        return self.trialPopulation
+
+    def survivor_selection(self, trialPopulation):
+        '''
+            DE survivor selection. A mutant vector is carried over to the next
             generation if its fitness is better or equal than its parent's.
 
                 x_i(t+1) = u_i(t), if f(u_i(t)) <= f(x_i(t))
@@ -160,12 +204,12 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         '''
 
         # Logic array to compare new and previous fitness values
-        logicArray = np.less_equal(mutatedPopulation['Fitness'], self.population['Fitness']).values
+        logicArray = np.less_equal(trialPopulation['Fitness'], self.population['Fitness']).values
         logicArray.shape = (self.pop_size, 1)
         logicArray = np.tile(logicArray, (1, self.dim+1))
 
         # Keep mutated specimens only if fitness improves over its parents
-        newPopulation = pd.DataFrame(np.where(logicArray, mutatedPopulation, self.population))
+        newPopulation = pd.DataFrame(np.where(logicArray, trialPopulation, self.population))
 
         newPopulation.columns = self.population.columns # Horrible hack to recover Fitness columns name
 
@@ -175,7 +219,8 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
 
     def generation(self):
         self.mutation()
-        self.survivor_selection(self.mutatedPopulation)
+        self.crossover_binomial(self.mutatedPopulation)
+        self.survivor_selection(self.trialPopulation)
 
         return self.population
 

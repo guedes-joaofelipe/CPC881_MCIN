@@ -5,7 +5,7 @@ from tqdm               import tqdm
 from multiprocessing    import Pool
 
 from optimize   import optimize
-from evolution  import EvolutionStrategyMod
+from evolution  import EvolutionStrategyMod, DifferentialEvolution
 import dirs
 
 
@@ -16,7 +16,7 @@ def aux_optim(run_id=0, func_id=5, dim=2, max_f_evals='auto', target_error=10e-8
     np.random.seed()
 
     print("Run ID: ", run_id)
-    errorHist, fitnessHist = optimize(EvolutionStrategyMod, func_id=func_id, dim=dim, max_f_evals=max_f_evals,
+    errorHist, fitnessHist = optimize(DifferentialEvolution, func_id=func_id, dim=dim, max_f_evals=max_f_evals,
                               target_error=target_error, verbose=True)
 
     errorHist["Run"] = np.ones(errorHist.shape[0], dtype=int)*run_id

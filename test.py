@@ -19,6 +19,7 @@ print(alg.population)
 # targetVector = alg.population.iloc[index, :]
 # for i in range(10):
 alg.generation()
-# print(alg.population)
+# # print(alg.population)
 alg.generation()
+# alg.crossover_binomial(alg.mutation())
 print(alg.population)
