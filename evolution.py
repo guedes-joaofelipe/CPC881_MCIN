@@ -8,7 +8,6 @@ class EvolutionaryAlgorithm:
         self.dim            = dim
         self.pop_size       = pop_size
 
-
         self.fitnessEvals   = 0
 
 class DifferentialEvolution(EvolutionaryAlgorithm):
@@ -20,11 +19,15 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
 
         self.func_id    = func_id
 
+        # Parameters
+        self.param_F    = 0.1   # Mutation parameter F
+        self.cross_rate = 0.2   # Crossover probability
+
         # Fitness Function definition
         if self.func_id < 23:
             self.problem = pg.problem(pg.cec2014(prob_id=self.func_id, dim=self.dim))
         else:
-            raise ValueError("f_{:2d} not yet implemented".format(self.func_id))
+            raise NotImplementedError("f_{:2d} not yet implemented".format(self.func_id))
             return -1
 
         # Initialize population DataFrame and compute initial Fitness
@@ -35,7 +38,7 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
             Randomly initialize states and sigma values following a uniform initialization
             between limits xMax and xMin. Assign state and fitness values to self.population.
 
-            population is a DataFrame with one row per individual and two columns per
+            population is a DataFrame with one row per individual, one column per
             dimension and one extra for fitness values.
 
             Arguments: None
@@ -43,17 +46,15 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
             Returns: self.population, DataFrame with dimensions (population size) by (2*dimension + 1).
         '''
 
-        x = np.zeros((self.pop_size, 2*self.dim))
+        # specimen = np.zeros((self.pop_size, self.dim))
+        specimen = np.random.random((self.pop_size, self.dim))*(self.xMax - self.xMin) + self.xMin
 
-        x[:, :self.dim]   = np.random.random((self.pop_size, self.dim))*(self.xMax - self.xMin) + self.xMin
-        x[:, self.dim:]   = np.random.random((self.pop_size, self.dim))
+        initPopulation = pd.DataFrame(specimen)
 
-        initPopulation = pd.DataFrame(x)
-
-        self.population = self.set_state(initPopulation)
+        self.population = self.set_state(initPopulation, substitute='random')
         return self.population.copy()
 
-    def set_state(self, newPopulation):
+    def set_state(self, newPopulation, substitute='random'):
         '''
             Function to attribute new values to a population DataFrame.
             Guarantees correct fitness values for each state update.
@@ -61,36 +62,122 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
 
             Arguments:
                 newPopulation   : Population DataFrame with new state values
+                substitute      : Indicated what to do with non-viable specimens.
+                Options are as follows:
+                    'random': re-initializes non-viable vectors;
+                    'none'  : substitutes non-viable vectors with None over all dimensions;
+                    'edge'  : clips non-viable vectors to nearest edge of search space.
 
-            Returns: updatedPopulation, updated population DataFrame.
+            Returns: updatedPopulation, a population DataFrame with the input values
+            checked for viability and updated fitness column.
         '''
         # Viability Treatment
         # Checks if states are inside search space, If not, randomly initialize them
-        logicArray = np.logical_or(np.less(newPopulation.iloc[:, :self.dim], self.xMin),
-                                   np.greater(newPopulation.iloc[:, :self.dim], self.xMax))
+        logicArray = np.logical_or(np.less(newPopulation, self.xMin),
+                                   np.greater(newPopulation, self.xMax))
 
-        newPopulation.iloc[:, :self.dim] = np.where(logicArray,
-        np.random.random()*(self.xMax - self.xMin) + self.xMin, newPopulation.iloc[:, :self.dim])
-
-        updatedPopulation = newPopulation
+        # Case/Switch python equivalent
+        choices = {
+            'random':
+                pd.DataFrame(np.where(logicArray, np.random.random()*(self.xMax - self.xMin) + self.xMin, newPopulation)),
+            'none':
+                pd.DataFrame(np.where(logicArray, np.NaN, newPopulation)),
+            'edge':
+                newPopulation.clip_lower(self.xMin).clip_upper(self.xMax)
+        }
+        updatedPopulation = choices.get(substitute, KeyError("Please select a valid substitute key")).copy()
 
         # Compute new Fitness
-        fitness = newPopulation.iloc[:, :self.dim].apply(self.get_fitness, axis=1).copy()
+        fitness = newPopulation.apply(self.get_fitness, axis=1).copy()
         updatedPopulation = updatedPopulation.assign(Fitness=fitness)
 
         return updatedPopulation.copy()
 
-    def get_fitness(self, x):
+    def get_fitness(self, specimen):
         '''
-            Wrapper that returns fitness value for state input x and increments
+            Wrapper that returns fitness value for state input specimen and increments
             number of fitness evaluations.
 
-            Argument: x. State vector of length (dim).
+            Argument: specimen. State vector of length (dim).
 
             Returns : Fitness for given input state as evaluated by target function.
         '''
         self.fitnessEvals +=1
-        return self.problem.fitness(x)[0]
+        return self.problem.fitness(specimen)[0]
+
+    def mutation_best_1(self, specimen, index, param_F=0.1):
+        '''
+            DE/best/1 mutation scheme
+            Every specimen produces a mutated/donor vector each generation.
+
+            Arguments:
+                specimen: Target vector of shape (1 by dim+1), including Fitness column
+                index   : Target vector index.
+        '''
+        # Select two new specimens, different from current specimen
+        randomNum1 = index
+        while randomNum1 == index:
+            randomNum1 = np.random.randint(0, self.pop_size)
+
+        randomNum2 = index
+        while randomNum2 == index:
+            randomNum2 = np.random.randint(0, self.pop_size)
+
+        # Sanity check
+        if (randomNum1 == index) or (randomNum2 == index):
+            raise ValueError("Mutation index equal target index")
+            return -1
+
+        bestSpecimen  = self.population.sort_values("Fitness", ascending=True, inplace=False).iloc[0, :-1]
+        randSpecimen1 = self.population.iloc[randomNum1, :-1]
+        randSpecimen2 = self.population.iloc[randomNum2, :-1]
+
+        mutatedSpecimen = bestSpecimen + param_F*(randSpecimen1 - randSpecimen2)
+
+        return mutatedSpecimen
+
+    def mutation(self):
+        indexList     = list(range(0, self.pop_size))
+        parameterList = self.param_F*np.ones(self.pop_size)
+
+        # Mutate every specimen using scheme passed to mutationScheme
+        mutationScheme = self.mutation_best_1
+        newPopulation = pd.DataFrame(list(map(mutationScheme, self.population.T, indexList, parameterList))).reset_index(drop=True)
+
+        self.mutatedPopulation = self.set_state(newPopulation, substitute='edge')
+
+        return self.mutatedPopulation
+
+    def survivor_selection(self, mutatedPopulation):
+        '''
+            DE elitist survivor selection. A mutant vector is carried over to the next
+            generation if its fitness is better or equal than its parent's.
+
+                x_i(t+1) = u_i(t), if f(u_i(t)) <= f(x_i(t))
+                           x_i(t), else
+
+            Returns updated self.population DataFrame
+        '''
+
+        # Logic array to compare new and previous fitness values
+        logicArray = np.less_equal(mutatedPopulation['Fitness'], self.population['Fitness']).values
+        logicArray.shape = (self.pop_size, 1)
+        logicArray = np.tile(logicArray, (1, self.dim+1))
+
+        # Keep mutated specimens only if fitness improves over its parents
+        newPopulation = pd.DataFrame(np.where(logicArray, mutatedPopulation, self.population))
+
+        newPopulation.columns = self.population.columns # Horrible hack to recover Fitness columns name
+
+        self.population = newPopulation.copy()
+
+        return self.population
+
+    def generation(self):
+        self.mutation()
+        self.survivor_selection(self.mutatedPopulation)
+
+        return self.population
 
 
 

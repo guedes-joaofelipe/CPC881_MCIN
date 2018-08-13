@@ -5,7 +5,6 @@ from glob       import glob
 from tqdm       import tqdm
 
 import dirs
-from evolution  import EvolutionStrategy
 from utils      import get_solution
 
 def optimize(algorithm, func_id=1, dim=2, max_f_evals='auto', target_error=10e-8, verbose=True):
