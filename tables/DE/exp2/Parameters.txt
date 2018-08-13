@@ -1,0 +1,9 @@
+
+    funcList = [1, 2, 6, 7, 9, 14]   # Assignment function list
+p_size = 50
+dim 	 = 10
+Max FES  = 10k * dim
+
+Cr = 0.5
+F  = 0.2
+

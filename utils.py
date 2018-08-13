@@ -9,7 +9,7 @@ import defs
 
 def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
     ## Table1: Error statistics per function
-    folder = dirs.results+algorithm+"*/"
+    folder = dirs.results+algorithm+"/*"
     folderList = glob(folder+"*dim"+str(dim)+"*")
     # print(folderList)
 
