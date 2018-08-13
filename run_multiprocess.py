@@ -9,14 +9,14 @@ from evolution  import EvolutionStrategyMod, DifferentialEvolution
 import dirs
 
 
-def aux_optim(run_id=0, func_id=5, dim=2, max_f_evals='auto', target_error=10e-8):
+def aux_optim(run_id=0, func_id=5, dim=2, pop_size=30, max_f_evals='auto', target_error=10e-8):
     '''
         Auxiliary function for multiprocessing.
     '''
     np.random.seed()
 
     print("Run ID: ", run_id)
-    errorHist, fitnessHist = optimize(DifferentialEvolution, func_id=func_id, dim=dim, max_f_evals=max_f_evals,
+    errorHist, fitnessHist = optimize(DifferentialEvolution, func_id=func_id, dim=dim, pop_size=30, max_f_evals=max_f_evals,
                               target_error=target_error, verbose=True)
 
     errorHist["Run"] = np.ones(errorHist.shape[0], dtype=int)*run_id
@@ -32,6 +32,8 @@ if __name__ == "__main__":
         # Problem and Evaluation parameters
         dim         = 10
         numRuns     = 51
+        popSize     = 50
+
         successRate = 0
         targetError = 1e-8
         max_f_evals = 'auto'
@@ -45,7 +47,7 @@ if __name__ == "__main__":
             # Arguments: numRuns x [runId, funcId, dim, max_f_evals, targetError]
             argList = []
             for runId in range(numRuns):
-                argList.append([runId, funcId, dim, max_f_evals, targetError])
+                argList.append([runId, funcId, dim, popSize, max_f_evals, targetError])
 
             hist = []
             error = []

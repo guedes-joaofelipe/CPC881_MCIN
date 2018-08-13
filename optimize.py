@@ -7,14 +7,11 @@ from tqdm       import tqdm
 import dirs
 from utils      import get_solution
 
-def optimize(algorithm, func_id=1, dim=2, max_f_evals='auto', target_error=10e-8, verbose=True):
+def optimize(algorithm, func_id=1, dim=2, pop_size=30,  max_f_evals='auto', target_error=10e-8, verbose=True):
     if max_f_evals == 'auto':
         max_f_evals = 10000*dim
-
-    numGenerations = 200
-    popSize        = 30
-
-    alg = algorithm(dim=dim, func_id=func_id, pop_size=popSize)
+ 
+    alg = algorithm(dim=dim, func_id=func_id, pop_size=pop_size)
     solution = get_solution(func_id, dim)
 
     # Initialize variables

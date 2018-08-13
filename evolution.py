@@ -11,7 +11,7 @@ class EvolutionaryAlgorithm:
         self.fitnessEvals   = 0
 
 class DifferentialEvolution(EvolutionaryAlgorithm):
-    def __init__(self, dim=2, func_id=1, pop_size=100):
+    def __init__(self, dim=2, func_id=1, pop_size=30):
         # Initialize superclass
         super().__init__(dim, pop_size)
         self.xMin       = -100       # Search space limits
@@ -20,7 +20,7 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         self.func_id    = func_id
 
         # Parameters
-        self.param_F    = 0.1   # Mutation parameter F
+        self.param_F    = 0.9   # Mutation parameter F
         self.cross_rate = 0.2   # Crossover probability
 
         # Fitness Function definition
