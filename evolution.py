@@ -90,6 +90,10 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         fitness = newPopulation.apply(self.get_fitness, axis=1).copy()
         updatedPopulation = updatedPopulation.assign(Fitness=fitness)
 
+        if updatedPopulation.isna().any().any():
+            print(updatedPopulation.drop(labels="Fitness", axis=1).isna().sum(axis=1))
+            input()
+
         return updatedPopulation.copy()
 
     def get_fitness(self, specimen):

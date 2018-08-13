@@ -10,6 +10,6 @@ targetError = 1e-8
 numRuns     = 50
 
 # Make all tables
-for algorithm in ["ES", "ESMod"]:
+for algorithm in ["ES", "ESMod", "DE"]:
     for dim in [10, 30]:
         make_tables(algorithm, dim, numRuns, targetError)

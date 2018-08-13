@@ -10,7 +10,7 @@ from utils      import get_solution
 def optimize(algorithm, func_id=1, dim=2, pop_size=30,  max_f_evals='auto', target_error=10e-8, verbose=True):
     if max_f_evals == 'auto':
         max_f_evals = 10000*dim
- 
+
     alg = algorithm(dim=dim, func_id=func_id, pop_size=pop_size)
     solution = get_solution(func_id, dim)
 
@@ -43,7 +43,7 @@ def optimize(algorithm, func_id=1, dim=2, pop_size=30,  max_f_evals='auto', targ
     if verbose is True:
         print("\nMean Fitness: {:.4f}".format(lastMeanFit))
         print("Best Fitness: {:.4f}\n".format(lastBestFit))
-        print("Solution: {:.4f}\nDiff    : {:.4f}\nF Evals:   {}\n".format(solution, solution-lastMeanFit, es.fitnessEvals))
+        print("Solution: {:.4f}\nDiff    : {:.4f}\nF Evals:   {}\n".format(solution, solution-lastMeanFit, alg.fitnessEvals))
 
     return errorHist, fitnessHist
 
