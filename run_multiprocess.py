@@ -1,3 +1,4 @@
+import os
 import time
 import numpy            as np
 import pandas           as pd
@@ -25,49 +26,51 @@ def aux_optim(run_id=0, func_id=5, dim=2, pop_size=30, max_f_evals='auto', targe
 
 if __name__ == "__main__":
     # funcList = [2]
+    dimList  = [10]
     funcList = [1, 2, 6, 7, 9, 14]   # Assignment function list
-    for funcId in funcList:
-        print("\nFunction {:2d}\n".format(funcId))
+    for dim in dimList:
+        for funcId in funcList:
+            print("\nFunction {:2d}\n".format(funcId))
 
-        # Problem and Evaluation parameters
-        dim         = 10
-        numRuns     = 51
-        popSize     = 50
+            # Problem and Evaluation parameters
+            numRuns     = 51
+            popSize     = 50
 
-        successRate = 0
-        targetError = 1e-8
-        # max_f_evals = 'auto'
-        max_f_evals = 1000*dim
+            successRate = 0
+            targetError = 1e-8
+            max_f_evals = 'auto'
 
-        numProcesses= 4
+            #TODO: Save parameters in a txt file for reference
 
-        start = time.perf_counter()
-        hist = pd.DataFrame()
-        with Pool(numProcesses) as p:
-            # Build argument list
-            # Arguments: numRuns x [runId, funcId, dim, max_f_evals, targetError]
-            argList = []
-            for runId in range(numRuns):
-                argList.append([runId, funcId, dim, popSize, max_f_evals, targetError])
+            numProcesses= os.cpu_count()-2
 
-            hist = []
-            error = []
-            for errorHist, fitnessHist in p.starmap(aux_optim, argList, chunksize=1):
-                hist.append(errorHist)
+            start = time.perf_counter()
+            hist = pd.DataFrame()
+            with Pool(numProcesses) as p:
+                # Build argument list
+                # Arguments: numRuns x [runId, funcId, dim, max_f_evals, targetError]
+                argList = []
+                for runId in range(numRuns):
+                    argList.append([runId, funcId, dim, popSize, max_f_evals, targetError])
 
-                bestError = errorHist.drop(labels='Run', axis=1).min()
-                error.append(bestError)
+                hist = []
+                error = []
+                for errorHist, fitnessHist in p.starmap(aux_optim, argList, chunksize=1):
+                    hist.append(errorHist)
 
-            hist = pd.concat(hist, ignore_index=True)
-            successRate = np.sum(np.where(np.less_equal(error, targetError), 1, 0))
+                    bestError = errorHist.drop(labels='Run', axis=1).min()
+                    error.append(bestError)
 
-        elapsed = time.perf_counter() - start
-        successRate = (successRate/numRuns)*100
+                hist = pd.concat(hist, ignore_index=True)
+                successRate = np.sum(np.where(np.less_equal(error, targetError), 1, 0))
 
-        print("\nhist shape: ", hist.shape)
+            elapsed = time.perf_counter() - start
+            successRate = (successRate/numRuns)*100
 
-        print("\nElapsed time: {:.2f}s".format(elapsed) )
-        print("Success rate: {:.2f}%\n".format(successRate))
+            print("\nhist shape: ", hist.shape)
 
-        # Save results
-        hist.to_hdf(dirs.results+"DE_func{}_runs{}_dim{}_succ_{:.2f}.hdf".format(funcId, numRuns, dim, successRate), "Only")
+            print("\nElapsed time: {:.2f}s".format(elapsed) )
+            print("Success rate: {:.2f}%\n".format(successRate))
+
+            # Save results
+            hist.to_hdf(dirs.results+"DE_func{}_runs{}_dim{}_succ_{:.2f}.hdf".format(funcId, numRuns, dim, successRate), "Only")

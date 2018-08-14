@@ -1,4 +1,4 @@
-import time
+import os
 import numpy            as np
 import pandas           as pd
 from tqdm               import tqdm
@@ -9,57 +9,76 @@ import defs
 
 def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
     ## Table1: Error statistics per function
-    folder = dirs.results+algorithm+"/*"
-    folderList = glob(folder+"*dim"+str(dim)+"*")
-    # print(folderList)
+    folder = dirs.results+algorithm+"/"
+    folderList = glob(folder+"**/", recursive=True)
 
-    if (folderList == []):
-        # Check if input folder exists
+    # Check if input folder exists
+    fileList = glob(folder+"**/*dim"+str(dim)+"*.hdf", recursive=True)
+    if (fileList == []):
         print("\nInput: {}\nAlgorithm: {}\nDim: {}\nNot Found".format(folder, algorithm, dim))
         return False
     else:
-        print("\nInput: {}\nAlgorithm: {}\nDim: {}\nNum Runs: {}\nTarget Error: {}".format(folder, algorithm, dim, num_runs, target_error))
-        print("\n------------Table 1 Start----------------")
+        # If there are no subfolders, resume process on root folder
+        if (folderList == []):
+            folderList = folder
 
-        errorTable = pd.DataFrame()
+        # Check for subfolders up to one level to mantain same folder structure on saving
+        for subfolder in folderList:
+            subfolder = subfolder.replace("\\", "/")
+            fileList = glob(subfolder+"*dim"+str(dim)+"*.hdf")
+            print("\nInput: {}\nAlgorithm: {}\nDim: {}\nNum Runs: {}\nTarget Error: {}".format(folder, algorithm, dim, num_runs, target_error))
+            print("\n------------Table 1 Start----------------")
 
-        for file in tqdm(folderList):
-            file = file.replace("\\", "/")
-            data = load_data(file)
+            errorTable = pd.DataFrame()
 
-            # Append to table best error of each Run
-            subTable = data.groupby(by="Run").min().T
-            errorTable = errorTable.append(subTable)
+            for file in tqdm(fileList):
+                file = file.replace("\\", "/")
+                data = load_data(file)
 
-        # Count sucessess as error <= target_error
-        successTable = np.sum(np.where(errorTable <= target_error, 1, 0), axis=1)/errorTable.shape[1]
+                # Get file folder structure for saving
+                folderStructure = file.split("/")[:-1]
+                folderStructure = "/".join(folderStructure)+"/"
 
-        # Compose statistics table
-        table1 = pd.DataFrame(data={'Best': errorTable.min(axis=1), 'Worst':errorTable.max(axis=1),
-                                    'Median':errorTable.median(axis=1), 'Mean':errorTable.mean(axis=1),
-                                    "Std": errorTable.std(axis=1), "Success Rate": successTable})
+                # Append to table best error of each Run
+                subTable = data.groupby(by="Run").min().T
+                errorTable = errorTable.append(subTable)
 
-        # Save as excel file
-        if not(table1.empty):
-            savePath = dirs.tables+"{}_table1_dim{}.xlsx".format(algorithm, dim)
-            table1.to_excel(savePath, float_format="%.6f", index_label="F#")
+            # Count sucessess as error <= target_error
+            successTable = np.sum(np.where(errorTable <= target_error, 1, 0), axis=1)/errorTable.shape[1]
+
+            # Compose statistics table
+            table1 = pd.DataFrame(data={'Best': errorTable.min(axis=1), 'Worst':errorTable.max(axis=1),
+                                        'Median':errorTable.median(axis=1), 'Mean':errorTable.mean(axis=1),
+                                        "Std": errorTable.std(axis=1), "Success Rate": successTable})
+
+            # Save as excel file
+            if not(table1.empty):
+                savePath = folderStructure.replace(dirs.results, dirs.tables)
+
+                # Create folders
+                try:
+                    os.makedirs(savePath)
+                except OSError:
+                    pass
+
+                savePath += "{}_table1_dim{}.xlsx".format(algorithm, dim)
+                print(savePath)
+                # input()
+                table1.to_excel(savePath, float_format="%.6f", index_label="F#")
 
         print("\n------------Table 2 Start----------------")
         ## Table2: Best error evolution per generation per function
-        fileList = glob(folder+"*.hdf")
-        # for file in fileList:
-        #     print(file.replace("\\", "/"))
-        # input()
+        fileList = glob(folder+"**/*dim"+str(dim)+"*.hdf", recursive=True)
+
         for file in tqdm(fileList):
             file = file.replace("\\", "/")
 
+            # Get file folder structure for saving
+            folderStructure = file.split("/")[:-1]
+            folderStructure = "/".join(folderStructure)+"/"
 
             data = pd.read_hdf(file)
             errorTable = pd.DataFrame()
-            # print(file)
-            # print("\n", data.sum(axis=0, skipna=False))
-            # print(len(fileList))
-            # input()
 
             # Fill NaN with a value larger than max error but, if possible, still be float32
             fillVal = 1e15
@@ -84,15 +103,21 @@ def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
 
                 # Append Run data to the table
                 errorTable['Run {:2d}'.format(run)] = subTable.iloc[fesIndex.astype(int)]
-            #     print(errorTable)
-            # input()
 
             # Add a column with each function's mean error over all runs
             errorTable["Mean"] = errorTable.mean(axis=1, skipna=True)
 
             # Save as excel file
             if not(errorTable.empty):
-                savePath = dirs.tables+"{}_table2_{}_dim{}.xlsx".format(algorithm, key, dim)
+                savePath = folderStructure.replace(dirs.results, dirs.tables)
+
+                # Create folders
+                try:
+                    os.makedirs(savePath)
+                except OSError:
+                    pass
+
+                savePath += "{}_table2_{}_dim{}.xlsx".format(algorithm, key, dim)
                 errorTable.to_excel(savePath, float_format="%.8f", index_label='Gen')
 
         return True
