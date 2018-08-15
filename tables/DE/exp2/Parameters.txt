@@ -1,0 +1,7 @@
+DE/best/1/bin
+
+pop_size = 50
+dim 	 = 10
+
+Cr 	= 0.1
+F 	= 1.0

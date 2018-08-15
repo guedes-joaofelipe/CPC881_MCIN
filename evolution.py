@@ -184,11 +184,6 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         maskArray.shape = (1, self.mutatedPopulation.shape[1])
         maskArray       = np.tile(maskArray, (self.pop_size, 1))
 
-        # print(randomArray.shape)
-        # print(randomK.shape)
-        # print(maskArray.shape)
-        # input()
-
         newPopulation = self.population.drop(labels='Fitness', axis=1)
 
         # Substitute new values for randomArray smaller than Crossover rate
@@ -263,7 +258,6 @@ class OppositionDifferentialEvolution(DifferentialEvolution):
             Returns: self.population, DataFrame with dimensions (population size)
             by (2*dimension + 1).
         '''
-        print("OP DE init")
         # Initialize population uniformly over search space and compute opposite population
         pop = np.random.random((self.pop_size, self.dim))*(self.xMax - self.xMin) + self.xMin
         oppositePop = opposite_number(pop, self.xMin, self.xMax)
@@ -288,7 +282,7 @@ class OppositionDifferentialEvolution(DifferentialEvolution):
         '''
         # Select random target specimen
         index = np.random.randint(0, self.pop_size)
-        specimen = self.population.iloc[index, :]
+        specimen = self.population.iloc[index, :-1]
 
         # Select two new specimens, different from current specimen
         randomNum1 = index
@@ -304,11 +298,10 @@ class OppositionDifferentialEvolution(DifferentialEvolution):
             raise ValueError("Mutation index equal target index")
             return -1
 
-        bestSpecimen  = self.population.sort_values("Fitness", ascending=True, inplace=False).iloc[0, :-1]
         randSpecimen1 = self.population.iloc[randomNum1, :-1]
         randSpecimen2 = self.population.iloc[randomNum2, :-1]
 
-        mutatedSpecimen = bestSpecimen + param_F*(randSpecimen1 - randSpecimen2)
+        mutatedSpecimen = specimen + param_F*(randSpecimen1 - randSpecimen2)
 
         return mutatedSpecimen
 
