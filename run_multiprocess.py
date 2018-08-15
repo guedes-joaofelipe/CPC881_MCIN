@@ -6,18 +6,20 @@ from tqdm               import tqdm
 from multiprocessing    import Pool
 
 from optimize   import optimize
-from evolution  import EvolutionStrategyMod, DifferentialEvolution
+from evolution  import (EvolutionStrategyMod, DifferentialEvolution,
+                        OppositionDifferentialEvolution)
 import dirs
 
 
-def aux_optim(run_id=0, func_id=5, dim=2, pop_size=30, max_f_evals='auto', target_error=10e-8):
+def aux_optim(algorithm, run_id=0, func_id=5, dim=2, pop_size=30, max_f_evals='auto', target_error=10e-8):
     '''
         Auxiliary function for multiprocessing.
     '''
     np.random.seed()
+    # algorithm = OppositionDifferentialEvolution
 
     print("Run ID: ", run_id)
-    errorHist, fitnessHist = optimize(DifferentialEvolution, func_id=func_id, dim=dim, pop_size=30, max_f_evals=max_f_evals,
+    errorHist, fitnessHist = optimize(algorithm, func_id=func_id, dim=dim, pop_size=30, max_f_evals=max_f_evals,
                               target_error=target_error, verbose=True)
 
     errorHist["Run"] = np.ones(errorHist.shape[0], dtype=int)*run_id
@@ -27,21 +29,24 @@ def aux_optim(run_id=0, func_id=5, dim=2, pop_size=30, max_f_evals='auto', targe
 if __name__ == "__main__":
     dimList  = [10]
     funcList = [1, 2, 6, 7, 9, 14]   # Assignment function list
+    # funcList = [2]
+
+    # Problem and Evaluation parameters
+    algorithm   = OppositionDifferentialEvolution
+    numRuns     = 51
+    popSize     = 100
+
+    successRate = 0
+    targetError = 1e-8
+    max_f_evals = 'auto'
+    # max_f_evals = 1000
+    #TODO: Save parameters in a txt file for reference
+
+    numProcesses= os.cpu_count()-2
+
     for dim in dimList:
         for funcId in funcList:
             print("\nFunction {:2d}\n".format(funcId))
-
-            # Problem and Evaluation parameters
-            numRuns     = 51
-            popSize     = 100
-
-            successRate = 0
-            targetError = 1e-8
-            max_f_evals = 'auto'
-
-            #TODO: Save parameters in a txt file for reference
-
-            numProcesses= os.cpu_count()-2
 
             start = time.perf_counter()
             hist = pd.DataFrame()
@@ -50,7 +55,7 @@ if __name__ == "__main__":
                 # Arguments: numRuns x [runId, funcId, dim, max_f_evals, targetError]
                 argList = []
                 for runId in range(numRuns):
-                    argList.append([runId, funcId, dim, popSize, max_f_evals, targetError])
+                    argList.append([algorithm, runId, funcId, dim, popSize, max_f_evals, targetError])
 
                 hist = []
                 error = []
@@ -72,4 +77,4 @@ if __name__ == "__main__":
             print("Success rate: {:.2f}%\n".format(successRate))
 
             # Save results
-            hist.to_hdf(dirs.results+"DE_func{}_runs{}_dim{}_succ_{:.2f}.hdf".format(funcId, numRuns, dim, successRate), "Only")
+            hist.to_hdf(dirs.results+"ODE_func{}_runs{}_dim{}_succ_{:.2f}.hdf".format(funcId, numRuns, dim, successRate), "Only")

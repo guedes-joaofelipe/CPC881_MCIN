@@ -7,7 +7,6 @@ from utils      import opposite_number
 
 class EvolutionaryAlgorithm:
     def __init__(self, dim=2, pop_size=10):
-        print("DE Init setting pop size ", pop_size)
         self.dim            = dim
         self.pop_size       = pop_size
 
@@ -17,7 +16,6 @@ class EvolutionaryAlgorithm:
 class DifferentialEvolution(EvolutionaryAlgorithm):
     def __init__(self, dim=2, func_id=1, pop_size=30):
         # Initialize superclass EvolutionaryAlgorithm
-        print("DE Init passing pop size ", pop_size)
         super().__init__(dim=dim, pop_size=pop_size)
         self.xMin       = -100       # Search space limits
         self.xMax       =  100       #
@@ -241,7 +239,6 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
 class OppositionDifferentialEvolution(DifferentialEvolution):
     def __init__(self, dim=2, func_id=1, pop_size=100):
         # Initialize superclass DifferentialEvolution
-        print("ODE Init passing pop size ", pop_size)
         self.xMin       = -100       # Search space limits
         self.xMax       =  100       #
         super().__init__(dim=dim, pop_size=pop_size)
