@@ -7,6 +7,16 @@ from glob               import glob
 import dirs
 import defs
 
+def opposite_number(x, infLim, supLim):
+    '''
+        Compute opposite number in relation to the n-dimensional real input x.
+        Input must be limited to [infLim, supLim] in every dimension.
+
+        Returns x_opposite
+    '''
+    x_opposite = infLim + supLim - x
+    return x_opposite
+
 def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
     ## Table1: Error statistics per function
     folder = dirs.results+algorithm+"/"

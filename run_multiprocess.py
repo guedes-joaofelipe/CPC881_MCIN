@@ -25,7 +25,6 @@ def aux_optim(run_id=0, func_id=5, dim=2, pop_size=30, max_f_evals='auto', targe
 
 
 if __name__ == "__main__":
-    # funcList = [2]
     dimList  = [10]
     funcList = [1, 2, 6, 7, 9, 14]   # Assignment function list
     for dim in dimList:
@@ -34,7 +33,7 @@ if __name__ == "__main__":
 
             # Problem and Evaluation parameters
             numRuns     = 51
-            popSize     = 50
+            popSize     = 100
 
             successRate = 0
             targetError = 1e-8
