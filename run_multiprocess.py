@@ -16,7 +16,6 @@ def aux_optim(algorithm, run_id=0, func_id=5, dim=2, pop_size=30, max_f_evals='a
         Auxiliary function for multiprocessing.
     '''
     np.random.seed()
-    # algorithm = OppositionDifferentialEvolution
 
     print("Run ID: ", run_id)
     errorHist, fitnessHist = optimize(algorithm, func_id=func_id, dim=dim, pop_size=30, max_f_evals=max_f_evals,
@@ -32,15 +31,16 @@ if __name__ == "__main__":
     # funcList = [2]
 
     # Problem and Evaluation parameters
-    algorithm   = OppositionDifferentialEvolution
+    algorithm   = DifferentialEvolution
     numRuns     = 51
-    popSize     = 100
+    popSize     = 50
 
     successRate = 0
     targetError = 1e-8
     max_f_evals = 'auto'
     # max_f_evals = 1000
-    #TODO: Save parameters in a txt file for reference
+    #TODO:  Pass parameters as a dictionary/json
+    #       Save parameters in a file for reference
 
     numProcesses= os.cpu_count()-2
 
@@ -77,4 +77,10 @@ if __name__ == "__main__":
             print("Success rate: {:.2f}%\n".format(successRate))
 
             # Save results
-            hist.to_hdf(dirs.results+"ODE_func{}_runs{}_dim{}_succ_{:.2f}.hdf".format(funcId, numRuns, dim, successRate), "Only")
+            hist.to_hdf(dirs.results+"DE_func{}_runs{}_dim{}_succ_{:.2f}.hdf".format(funcId, numRuns, dim, successRate), "Only")
+
+    # After results are ready, format them into Excel tables
+    algList = ["DE"]
+    for algorithm in algList:
+        for dim in [10, 30]:
+            make_tables(algorithm, dim, numRuns, targetError)

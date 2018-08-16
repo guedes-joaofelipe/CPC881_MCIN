@@ -24,7 +24,7 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
 
         # Parameters
         self.param_F    = 0.9   # Mutation parameter F
-        self.cross_rate = 0.2   # Crossover probability
+        self.cross_rate = 0.9   # Crossover probability
 
         # Fitness Function definition
         if self.func_id < 23:
