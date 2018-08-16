@@ -1,19 +1,24 @@
-from multiprocessing import Pool
+import os
 import time
-import numpy    as np
-import pandas   as pd
-from tqdm       import tqdm
+import numpy            as np
+import pandas           as pd
+from tqdm               import tqdm
+from multiprocessing    import Pool
 
 from optimize   import optimize
-from evolution  import EvolutionStrategyMod
+from evolution  import (EvolutionStrategyMod, DifferentialEvolution,
+                        OppositionDifferentialEvolution)
 import dirs
 
 
-def aux_optim(run_id=0, func_id=5, dim=2, max_f_evals='auto', target_error=10e-8):
+def aux_optim(algorithm, run_id=0, func_id=5, dim=2, pop_size=30, max_f_evals='auto', target_error=10e-8):
+    '''
+        Auxiliary function for multiprocessing.
+    '''
     np.random.seed()
 
     print("Run ID: ", run_id)
-    errorHist, fitnessHist = optimize(EvolutionStrategyMod, func_id=func_id, dim=dim, max_f_evals=max_f_evals,
+    errorHist, fitnessHist = optimize(algorithm, func_id=func_id, dim=dim, pop_size=30, max_f_evals=max_f_evals,
                               target_error=target_error, verbose=True)
 
     errorHist["Run"] = np.ones(errorHist.shape[0], dtype=int)*run_id
@@ -21,52 +26,61 @@ def aux_optim(run_id=0, func_id=5, dim=2, max_f_evals='auto', target_error=10e-8
 
 
 if __name__ == "__main__":
-    funcList = [2]
-    # funcList = [1, 2, 6, 7, 9, 14]   # Assignment function list
-    for funcId in funcList:
-        print("\nFunction {:2d}\n".format(funcId))
+    dimList  = [10]
+    funcList = [1, 2, 6, 7, 9, 14]   # Assignment function list
+    # funcList = [2]
 
-        # Problem and Evaluation parameters
-        dim         = 10
-        # funcId      = 5 # Shifted and Rotated Ackley Function
-        numRuns     = 51
-        successRate = 0
-        targetError = 1e-8
-        max_f_evals = 'auto'
+    # Problem and Evaluation parameters
+    algorithm   = DifferentialEvolution
+    numRuns     = 51
+    popSize     = 50
 
-        numProcesses= 6
+    successRate = 0
+    targetError = 1e-8
+    max_f_evals = 'auto'
+    # max_f_evals = 1000
+    #TODO:  Pass parameters as a dictionary/json
+    #       Save parameters in a file for reference
 
-        # if numRuns % numProcesses != 0:
-        #     raise ValueError("NumRuns must be multiple of numProcesses")
-        #     break
+    numProcesses= os.cpu_count()-2
 
-        start = time.perf_counter()
-        hist = pd.DataFrame()
-        with Pool(numProcesses) as p:
-            # Build argument list
-            # Arguments: numRuns x [runId, funcId, dim, max_f_evals, targetError]
-            argList = []
-            for runId in range(numRuns):
-                argList.append([runId, funcId, dim, max_f_evals, targetError])
+    for dim in dimList:
+        for funcId in funcList:
+            print("\nFunction {:2d}\n".format(funcId))
 
-            hist = []
-            error = []
-            for errorHist, fitnessHist in p.starmap(aux_optim, argList, chunksize=1):
-                hist.append(errorHist)
+            start = time.perf_counter()
+            hist = pd.DataFrame()
+            with Pool(numProcesses) as p:
+                # Build argument list
+                # Arguments: numRuns x [runId, funcId, dim, max_f_evals, targetError]
+                argList = []
+                for runId in range(numRuns):
+                    argList.append([algorithm, runId, funcId, dim, popSize, max_f_evals, targetError])
 
-                bestError = errorHist.drop(labels='Run', axis=1).min()
-                error.append(bestError)
+                hist = []
+                error = []
+                for errorHist, fitnessHist in p.starmap(aux_optim, argList, chunksize=1):
+                    hist.append(errorHist)
 
-            hist = pd.concat(hist, ignore_index=True)
-            successRate = np.sum(np.where(np.less_equal(error, targetError), 1, 0))
+                    bestError = errorHist.drop(labels='Run', axis=1).min()
+                    error.append(bestError)
 
-        elapsed = time.perf_counter() - start
-        successRate = (successRate/numRuns)*100
+                hist = pd.concat(hist, ignore_index=True)
+                successRate = np.sum(np.where(np.less_equal(error, targetError), 1, 0))
 
-        print("\nhist shape: ", hist.shape)
+            elapsed = time.perf_counter() - start
+            successRate = (successRate/numRuns)*100
 
-        print("\nElapsed time: {:.2f}s".format(elapsed) )
-        print("Success rate: {:.2f}%\n".format(successRate))
+            print("\nhist shape: ", hist.shape)
 
-        # Save results
-        hist.to_hdf(dirs.results+"ES_func{}_runs{}_dim{}_succ_{:.2f}.hdf".format(funcId, numRuns, dim, successRate), "Only")
+            print("\nElapsed time: {:.2f}s".format(elapsed) )
+            print("Success rate: {:.2f}%\n".format(successRate))
+
+            # Save results
+            hist.to_hdf(dirs.results+"DE_func{}_runs{}_dim{}_succ_{:.2f}.hdf".format(funcId, numRuns, dim, successRate), "Only")
+
+    # After results are ready, format them into Excel tables
+    algList = ["DE"]
+    for algorithm in algList:
+        for dim in [10, 30]:
+            make_tables(algorithm, dim, numRuns, targetError)

@@ -1,8 +1,10 @@
 import numpy                as np
+import pandas               as pd
 import matplotlib.pyplot    as plt
 from mpl_toolkits.mplot3d   import Axes3D
 
 import dirs
+import defs
 
 def plot_3d(X, Y, Z, save=True, fig_name="Plot_3D", show=False):
     '''
@@ -45,13 +47,33 @@ def plot_3d(X, Y, Z, save=True, fig_name="Plot_3D", show=False):
 
     return fig, ax
 
-# def plot_evolution(X, Y, Z, population, save=True, fig_name="Evolution_3D", show=False):
-#     '''
-#         Plot evolution of population over target function surface.
-#     '''
-#
-#     fig, ax = plot_3d(X, Y, Z, save=False, show=False)
-#
-#
-#
-#     return fig, ax
+def plot_evolution(tablePath, save=False, fig_name="auto", show=True):
+    '''
+        Plot evolution of error over generations for given results table.
+    '''
+    fig = plt.figure(figsize=(24, 18))
+
+
+    title = "Evolution of mean error over FES number for DE on F1"
+    if fig_name == "auto":
+        fig_name = title
+
+    data = pd.read_excel(tablePath)
+    # print(data)
+    plt.semilogy(defs.fesScale, data["Mean"], 'k.', markersize='8', linestyle='-', linewidth='2', label='DE/best/1/bin')
+
+    plt.xlim([-0.01, 1.0])
+    # plt.ylim([0.0, 1.01])
+    plt.xlabel('Percentage of MaxFES',fontsize= 'large')
+    plt.ylabel('Mean Error',fontsize= 'large')
+    plt.title(title)
+    plt.legend(loc="upper right")
+
+    if show is True:
+        plt.show()
+    if save is True:
+        fig.savefig(dirs.figures+fig_name+".png",
+                    orientation='portrait', bbox_inches='tight')
+
+
+    return fig
