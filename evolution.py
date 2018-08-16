@@ -48,7 +48,6 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
 
             Returns: self.population, DataFrame with dimensions (population size) by (dimension + 1).
         '''
-        print("DE Init")
         specimen = np.random.random((self.pop_size, self.dim))*(self.xMax - self.xMin) + self.xMin
 
         initPopulation = pd.DataFrame(specimen)
@@ -116,6 +115,40 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         self.fitnessEvals +=1
         return self.problem.fitness(specimen)[0]
 
+    def mutation_rand_1(self, specimen=None, index=None, param_F=0.1):
+        '''
+            DE/rand/1 mutation scheme
+            Every specimen produces a mutated/donor vector each generation.
+
+            Arguments:
+                specimen, index are mantained for compatibility.
+                param_F: F parameter. Must be a positive real number.
+        '''
+        # Select random target specimen
+        index = np.random.randint(0, self.pop_size)
+        specimen = self.population.iloc[index, :-1]
+
+        # Select two new specimens, different from current specimen
+        randomNum1 = index
+        while randomNum1 == index:
+            randomNum1 = np.random.randint(0, self.pop_size)
+
+        randomNum2 = index
+        while randomNum2 == index:
+            randomNum2 = np.random.randint(0, self.pop_size)
+
+        # Sanity check
+        if (randomNum1 == index) or (randomNum2 == index):
+            raise ValueError("Mutation index equal target index")
+            return -1
+
+        randSpecimen1 = self.population.iloc[randomNum1, :-1]
+        randSpecimen2 = self.population.iloc[randomNum2, :-1]
+
+        mutatedSpecimen = specimen + param_F*(randSpecimen1 - randSpecimen2)
+
+        return mutatedSpecimen
+
     def mutation_best_1(self, specimen, index, param_F=0.1):
         '''
             DE/best/1 mutation scheme
@@ -152,10 +185,7 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         parameterList = self.param_F*np.ones(self.pop_size)
 
         # Mutate every specimen using scheme passed to mutationScheme
-        # mutationScheme = self.mutation_best_1
         self.mutatedPopulation = pd.DataFrame(list(map(mutation_scheme, self.population.T, indexList, parameterList))).reset_index(drop=True)
-
-        # self.mutatedPopulation = self.set_state(newPopulation, substitute='edge')
 
         return self.mutatedPopulation
 
@@ -173,26 +203,26 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
             Returns self.trialPopulation DataFrame with updated fitness column
         '''
         # Create random number arrays
-        randomArray = np.random.rand(self.mutatedPopulation.shape[0], self.mutatedPopulation.shape[1])
+        randomArray = np.random.rand(mutatedPopulation.shape[0], mutatedPopulation.shape[1])
         randomK     = np.random.randint(0, self.dim, size=self.pop_size)
-        maskArray   = np.arange(self.mutatedPopulation.shape[1])
+        maskArray   = np.arange(mutatedPopulation.shape[1])
 
         # Reshape and tile arrays
         randomK.shape   = (self.pop_size, 1)
         randomK         = np.tile(randomK, (1, self.dim))
 
-        maskArray.shape = (1, self.mutatedPopulation.shape[1])
+        maskArray.shape = (1, mutatedPopulation.shape[1])
         maskArray       = np.tile(maskArray, (self.pop_size, 1))
 
         newPopulation = self.population.drop(labels='Fitness', axis=1)
 
         # Substitute new values for randomArray smaller than Crossover rate
         newPopulation = newPopulation.where(np.less_equal(randomArray, self.cross_rate),
-                                            other=self.mutatedPopulation)
+                                            other=mutatedPopulation)
 
         # Substitute new values for K == columns, guaranteeing at least one substitution
         newPopulation = newPopulation.where(np.not_equal(randomK, maskArray),
-                                            other=self.mutatedPopulation)
+                                            other=mutatedPopulation)
 
         # Compute new fitness values and treat exceptions
         self.trialPopulation = self.set_state(newPopulation, substitute='edge')
@@ -225,7 +255,7 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         return self.population
 
     def generation(self):
-        self.mutation(self.mutation_best_1)
+        self.mutation(self.mutation_rand_1)
         self.crossover_binomial(self.mutatedPopulation)
         self.survivor_selection(self.trialPopulation)
 
@@ -270,40 +300,6 @@ class OppositionDifferentialEvolution(DifferentialEvolution):
         self.population = initPopulation.sort_values("Fitness", ascending=True, inplace=False).iloc[:self.pop_size, :]
         self.population = self.population.reset_index(drop=True)
         return self.population.copy()
-
-    def mutation_rand_1(self, specimen=None, index=None, param_F=0.1):
-        '''
-            DE/best/1 mutation scheme
-            Every specimen produces a mutated/donor vector each generation.
-
-            Arguments:
-                specimen, index are mantained for compatibility.
-                param_F: F parameter. Must be a positive real number.
-        '''
-        # Select random target specimen
-        index = np.random.randint(0, self.pop_size)
-        specimen = self.population.iloc[index, :-1]
-
-        # Select two new specimens, different from current specimen
-        randomNum1 = index
-        while randomNum1 == index:
-            randomNum1 = np.random.randint(0, self.pop_size)
-
-        randomNum2 = index
-        while randomNum2 == index:
-            randomNum2 = np.random.randint(0, self.pop_size)
-
-        # Sanity check
-        if (randomNum1 == index) or (randomNum2 == index):
-            raise ValueError("Mutation index equal target index")
-            return -1
-
-        randSpecimen1 = self.population.iloc[randomNum1, :-1]
-        randSpecimen2 = self.population.iloc[randomNum2, :-1]
-
-        mutatedSpecimen = specimen + param_F*(randSpecimen1 - randSpecimen2)
-
-        return mutatedSpecimen
 
     def generation_jumping(self):
         '''
