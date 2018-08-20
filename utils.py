@@ -46,12 +46,13 @@ def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
                 file = file.replace("\\", "/")
                 data = load_data(file)
 
-                # Get file folder structure for saving
+                # Drop filename to get folder structure
                 folderStructure = file.split("/")[:-1]
                 folderStructure = "/".join(folderStructure)+"/"
 
                 # Append to table best error of each Run
                 subTable = data.groupby(by="Run").min().T
+
                 errorTable = errorTable.append(subTable)
 
             # Count sucessess as error <= target_error
@@ -61,8 +62,6 @@ def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
             table1 = pd.DataFrame(data={'Best': errorTable.min(axis=1), 'Worst':errorTable.max(axis=1),
                                         'Median':errorTable.median(axis=1), 'Mean':errorTable.mean(axis=1),
                                         "Std": errorTable.std(axis=1), "Success Rate": successTable})
-            # print(table1)
-            # input()
             # Save as excel file
             if not(table1.empty):
                 savePath = folderStructure.replace(dirs.results, dirs.tables)
@@ -75,8 +74,9 @@ def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
 
                 savePath += "{}_table1_dim{}.xlsx".format(algorithm, dim)
                 print("Table1 saved at\n{}\n".format(savePath))
-                # input()
                 table1.to_excel(savePath, float_format="%.6f", index_label="F#")
+            else:
+                print("\nERROR: Empty table, skipping save.")
 
         print("\n------------Table 2 Start----------------")
         ## Table2: Best error evolution per generation per function
@@ -96,6 +96,8 @@ def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
 
             data = pd.read_hdf(file)
             errorTable = pd.DataFrame()
+            # print(data)
+            # input()
 
             # Get function number and store as Key
             try:
@@ -120,9 +122,15 @@ def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
                 # Only include a pre-determined set of generations
                 fesIndex = (generations - 1)*np.array(defs.fesScale)
                 fesIndex = fesIndex.round()
+                print(subTable )
+                # print(subTable.iloc[0,:])
+                print(subTable.shape)
+                print(generations)
+                print(fesIndex)
+                input()
 
                 # Get only the best individuals
-                subTable = subTable.iloc[:, :-1].min(axis=1, skipna=True)
+                subTable = subTable.iloc[:, :-1].min(axis=1, skipna=False)
 
                 # Append Run data to the table
                 errorTable['Run {:2d}'.format(run)] = subTable.iloc[fesIndex.astype(int)]

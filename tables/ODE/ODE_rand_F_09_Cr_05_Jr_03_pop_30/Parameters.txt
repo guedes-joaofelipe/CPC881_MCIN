@@ -1,6 +1,6 @@
 ODE/rand/1/bin
 
-pop_size = 100
+pop_size = 30
 dim 	 = 10
 
 Cr 	= 0.9

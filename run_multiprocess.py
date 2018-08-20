@@ -18,7 +18,7 @@ def aux_optim(algorithm, run_id=0, func_id=5, dim=2, pop_size=30, max_f_evals='a
     np.random.seed()
 
     print("Run ID: ", run_id)
-    errorHist, fitnessHist = optimize(algorithm, func_id=func_id, dim=dim, pop_size=30, max_f_evals=max_f_evals,
+    errorHist, fitnessHist = optimize(algorithm, func_id=func_id, dim=dim, pop_size=pop_size, max_f_evals=max_f_evals,
                               target_error=target_error, verbose=True)
 
     errorHist["Run"] = np.ones(errorHist.shape[0], dtype=int)*run_id

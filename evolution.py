@@ -12,7 +12,6 @@ class EvolutionaryAlgorithm:
 
         self.fitnessEvals   = 0
 
-
 class DifferentialEvolution(EvolutionaryAlgorithm):
     def __init__(self, dim=2, func_id=1, pop_size=30):
         # Initialize superclass EvolutionaryAlgorithm
@@ -285,8 +284,8 @@ class OppositionDifferentialEvolution(DifferentialEvolution):
 
             Arguments: None
 
-            Returns: self.population, DataFrame with dimensions (population size)
-            by (2*dimension + 1).
+            Returns: self.population, a DataFrame with dimensions (population size)
+            by (dimension + 1).
         '''
         # Initialize population uniformly over search space and compute opposite population
         pop = np.random.random((self.pop_size, self.dim))*(self.xMax - self.xMin) + self.xMin
