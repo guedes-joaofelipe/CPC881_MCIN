@@ -35,6 +35,8 @@ if __name__ == "__main__":
     numRuns     = 51
     popSize     = 50
 
+    fileName = "DE_F{}_runs{}_dim{}".format(funcId, numRuns, dim)
+
     successRate = 0
     targetError = 1e-8
     max_f_evals = 'auto'
@@ -77,7 +79,7 @@ if __name__ == "__main__":
             print("Success rate: {:.2f}%\n".format(successRate))
 
             # Save results
-            hist.to_hdf(dirs.results+"DE_func{}_runs{}_dim{}_succ_{:.2f}.hdf".format(funcId, numRuns, dim, successRate), "Only")
+            hist.to_hdf(dirs.results+fileName+"_succ_{:.2f}.hdf".format(successRate), "Only")
 
     # After results are ready, format them into Excel tables
     algList = ["DE"]

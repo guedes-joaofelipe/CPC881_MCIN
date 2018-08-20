@@ -18,7 +18,6 @@ def opposite_number(x, infLim, supLim):
     return x_opposite
 
 def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
-    ## Table1: Error statistics per function
     folder = dirs.results+algorithm+"/"
     folderList = glob(folder+"**/", recursive=True)
 
@@ -28,20 +27,22 @@ def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
         print("\nInput: {}\nAlgorithm: {}\nDim: {}\nNot Found".format(folder, algorithm, dim))
         return False
     else:
+        ## Table1: Error statistics per function
         # If there are no subfolders, resume process on root folder
         if (folderList == []):
-            folderList = folder
+            folderList = [folder]
 
         # Check for subfolders up to one level to mantain same folder structure on saving
         for subfolder in folderList:
             subfolder = subfolder.replace("\\", "/")
-            fileList = glob(subfolder+"*dim"+str(dim)+"*.hdf")
-            print("\nInput: {}\nAlgorithm: {}\nDim: {}\nNum Runs: {}\nTarget Error: {}".format(folder, algorithm, dim, num_runs, target_error))
+            subFileList = glob(subfolder+"*dim"+str(dim)+"*.hdf")
+
+            print("\nInput: {}\nAlgorithm: {}\nDim: {}\nNum Runs: {}\nTarget Error: {}".format(subfolder, algorithm, dim, num_runs, target_error))
             print("\n------------Table 1 Start----------------")
 
             errorTable = pd.DataFrame()
 
-            for file in tqdm(fileList):
+            for file in tqdm(subFileList):
                 file = file.replace("\\", "/")
                 data = load_data(file)
 
@@ -60,7 +61,8 @@ def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
             table1 = pd.DataFrame(data={'Best': errorTable.min(axis=1), 'Worst':errorTable.max(axis=1),
                                         'Median':errorTable.median(axis=1), 'Mean':errorTable.mean(axis=1),
                                         "Std": errorTable.std(axis=1), "Success Rate": successTable})
-
+            # print(table1)
+            # input()
             # Save as excel file
             if not(table1.empty):
                 savePath = folderStructure.replace(dirs.results, dirs.tables)
@@ -72,14 +74,17 @@ def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
                     pass
 
                 savePath += "{}_table1_dim{}.xlsx".format(algorithm, dim)
-                print(savePath)
+                print("Table1 saved at\n{}\n".format(savePath))
                 # input()
                 table1.to_excel(savePath, float_format="%.6f", index_label="F#")
 
         print("\n------------Table 2 Start----------------")
         ## Table2: Best error evolution per generation per function
         fileList = glob(folder+"**/*dim"+str(dim)+"*.hdf", recursive=True)
-
+        # for file in fileList:
+        #     file = file.replace("\\", "/")
+        #     print(file)
+        # input()
         for file in tqdm(fileList):
             file = file.replace("\\", "/")
 
@@ -87,14 +92,22 @@ def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
             folderStructure = file.split("/")[:-1]
             folderStructure = "/".join(folderStructure)+"/"
 
+            fileName = file.split("/")[-1]
+
             data = pd.read_hdf(file)
             errorTable = pd.DataFrame()
 
-            # Fill NaN with a value larger than max error but, if possible, still be float32
-            fillVal = 1e15
-            data = data.fillna(value=fillVal)
+            # Get function number and store as Key
+            try:
+                keyPos = fileName.split("_").index("F")
+            except ValueError:
+                try:
+                    keyPos = fileName.split("_").index("func*")
+                except ValueError:
+                    print("\nERROR: File \n{}\n doesn't have function indicator.\n".format(fileName))
+                    continue
 
-            key = "F"+file.split("_")[1].replace("func", "")
+            key = "F"+fileName.split("_")[keyPos+1]
             print("\n", key)
 
             # For each run, get evolution of best errors per generation
@@ -128,6 +141,7 @@ def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
                     pass
 
                 savePath += "{}_table2_{}_dim{}.xlsx".format(algorithm, key, dim)
+                print(savePath)
                 errorTable.to_excel(savePath, float_format="%.8f", index_label='Gen')
 
         return True
@@ -163,8 +177,21 @@ def load_data(path):
     import pandas   as pd
 
     data = pd.read_hdf(path)
+    fileName = path.split("/")[-1]
 
-    key = "F"+path.split("_")[1][-2:]
+    # Get function number and store as Key
+    try:
+        keyPos = fileName.split("_").index("F")
+    except ValueError:
+        try:
+            keyPos = fileName.split("_").index("func*")
+        except ValueError:
+            print("\nERROR: File \n{}\n doesn't have function indicator.\n".format(fileName))
+            return False
+
+    key = "F"+fileName.split("_")[keyPos+1]
+
+    # key = "F"+path.split("_")[1][-2:]
 
     newData = data.drop('Run', axis=1).min(axis=1)
     newData = pd.DataFrame(data={key: newData, 'Run': data['Run']})
