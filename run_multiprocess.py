@@ -35,8 +35,6 @@ if __name__ == "__main__":
     numRuns     = 51
     popSize     = 50
 
-    fileName = "DE_F{}_runs{}_dim{}".format(funcId, numRuns, dim)
-
     successRate = 0
     targetError = 1e-8
     max_f_evals = 'auto'
@@ -48,6 +46,8 @@ if __name__ == "__main__":
 
     for dim in dimList:
         for funcId in funcList:
+            fileName = "DE_F{}_runs{}_dim{}".format(funcId, numRuns, dim)
+
             print("\nFunction {:2d}\n".format(funcId))
 
             start = time.perf_counter()
