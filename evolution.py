@@ -81,24 +81,44 @@ class DifferentialEvolutionSimple:
 
         return updatedPopulation
 
-    def generation(self):
-        ## Mutation
+    def mutation_best_1(self, indexes, bestVector):
+        '''
+            DE/best/1 mutation scheme
+            Every specimen produces a mutated/donor vector each generation.
+
+            Arguments:
+                index   : Target vector index.
+        '''
+        randomVector1 = self.population.iloc[indexes[1], :-1]
+        randomVector2 = self.population.iloc[indexes[2], :-1]
+        return bestVector + self.param_F*(randomVector1 - randomVector2)
+
+    def mutate_rand_1(self, indexes):
+        baseVector    = self.population.iloc[indexes[0], :-1]
+        randomVector1 = self.population.iloc[indexes[1], :-1]
+        randomVector2 = self.population.iloc[indexes[2], :-1]
+        return baseVector + self.param_F*(randomVector1 - randomVector2)
+
+    def mutation(self, mutation_scheme):
         def make_index_list(index):
             indexList = list(range(0, self.pop_size))
             indexList.remove(index)
             return np.random.choice(indexList, size=3, replace=False)
 
-        def mutate_rand_1(indexes):
-            baseVector    = self.population.iloc[indexes[0], :-1]
-            randomVector1 = self.population.iloc[indexes[1], :-1]
-            randomVector2 = self.population.iloc[indexes[2], :-1]
-            return baseVector + self.param_F*(randomVector1 - randomVector2)
-
         randomNums = np.array(list(map(make_index_list,
                                           list(range(0, self.pop_size)))))
 
+        if mutation_scheme == self.mutation_best_1:
+            bestVector    = self.population.iloc[self.population.idxmin(axis=0)[-1], :-1]
+            self.mutatedPopulation = pd.DataFrame(np.apply_along_axis(mutation_scheme, 1,
+                                                                      randomNums, bestVector))
+        else:
+            self.mutatedPopulation = pd.DataFrame(np.apply_along_axis(mutation_scheme, 1, randomNums))
+        return self.mutatedPopulation
 
-        self.mutatedPopulation = pd.DataFrame(np.apply_along_axis(mutate_rand_1, 1, randomNums))
+    def generation(self):
+        ## Mutation
+        self.mutation(self.mutation_best_1)
 
         ## Crossover
         # randomArray: Roll probability for each dimension of every specimen
@@ -191,7 +211,7 @@ class OppositionDifferentialEvolutionSimple(DifferentialEvolutionSimple):
     def generation(self):
         super().generation()
         if np.random.rand() < self.jump_rate:
-            print("JUMPED")
+            # print("JUMPED")
             self.generation_jumping()
 
         return self.population
@@ -483,6 +503,7 @@ class OppositionDifferentialEvolution(DifferentialEvolution):
 
         return self.population
 
+
 class EvolutionStrategy:
     def __init__(self, dim=2, func_id=1, pop_size=20):
         self.dim        = dim        # Problem dimensionality
@@ -678,7 +699,6 @@ class EvolutionStrategy:
         self.population = self.set_state(newPopulation)
 
         return self.population.copy()
-
 
 class EvolutionStrategyMod(EvolutionaryAlgorithm):
     def __init__(self, dim=2, func_id=1, pop_size=100):

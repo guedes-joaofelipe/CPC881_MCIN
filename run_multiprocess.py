@@ -27,13 +27,13 @@ def aux_optim(algorithm, run_id=0, func_id=5, dim=2, pop_size=30, max_f_evals='a
 
 
 if __name__ == "__main__":
-    dimList  = [10]
+    dimList  = [10, 30]
     funcList = [1, 2, 6, 7, 9, 14]   # Assignment function list
     # funcList = [2]
 
     # Problem and Evaluation parameters
-    algorithm   = OppositionDifferentialEvolutionSimple
-    numRuns     = 1
+    algorithm   = DifferentialEvolutionSimple
+    numRuns     = 50
     popSize     = 50
 
     successRate = 0
@@ -43,13 +43,14 @@ if __name__ == "__main__":
     #TODO:  Pass parameters as a dictionary/json
     #       Save parameters in a file for reference
 
-    numProcesses= os.cpu_count()-2
+    numProcesses= os.cpu_count()
+    print("Using {} cores.".format(numProcesses))
 
     start = time.perf_counter()
     for dim in dimList:
         for funcId in funcList:
             # FILENAME
-            fileName = "SIMPLE_ODE_F_{}_runs{}_dim{}".format(funcId, numRuns, dim)
+            fileName = "SIMPLE_DE_F_{}_runs{}_dim{}".format(funcId, numRuns, dim)
 
             print("\nFunction {:2d}\n".format(funcId))
 
