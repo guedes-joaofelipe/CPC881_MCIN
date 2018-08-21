@@ -12,6 +12,117 @@ class EvolutionaryAlgorithm:
 
         self.fitnessEvals   = 0
 
+class DifferentialEvolutionSimple:
+    def __init__(self, dim=2, func_id=1, pop_size=30):
+        # Initialize parameters
+        self.dim        = dim
+        self.pop_size   = pop_size
+        # self.xMin       = -100       # Search space limits
+        # self.xMax       =  100       #
+        self.xMin       = -100       # Search space limits
+        self.xMax       =  100       #
+        self.func_id      = func_id
+        self.fitnessEvals = 0
+
+        # Parameters
+        self.param_F    = 0.9   # Mutation parameter F
+        self.cross_rate = 0.9   # Crossover probability
+
+        # Fitness Function definition
+        self.problem = pg.problem(pg.cec2014(prob_id=self.func_id, dim=self.dim))
+
+        # Initialize population DataFrame and compute initial Fitness
+        specimen = np.random.random((self.pop_size, self.dim))*(self.xMax - self.xMin) + self.xMin
+
+        self.population = self.set_state(pd.DataFrame(specimen)).copy()
+
+
+    def get_fitness(self, specimen):
+        '''
+            Wrapper that returns fitness value for state input specimen and increments
+            number of fitness evaluations.
+
+            Argument: specimen. State vector of length (dim).
+
+            Returns : Fitness for given input state as evaluated by target function.
+        '''
+        self.fitnessEvals +=1
+        return self.problem.fitness(specimen)[0]
+
+    def set_state(self, newPopulation, substitute='random'):
+        '''
+            Function to attribute new values to a population DataFrame.
+            Guarantees correct fitness values for each state update.
+            Includes specimen viability evaluation and treatment.
+
+            Arguments:
+                newPopulation   : Population DataFrame with new state values
+                substitute      :
+                    'random': re-initializes non-viable vectors;
+            Returns: updatedPopulation, a population DataFrame with the input values
+            checked for viability and updated fitness column.
+        '''
+
+        # Exception Treatment
+        # Checks if states are inside search space. If not, reinitialize
+        logicArray = np.logical_or(np.less(newPopulation, self.xMin),
+                                   np.greater(newPopulation, self.xMax))
+
+        # Substitute offending numbers with a random number from random array
+        randomArray = np.random.random((self.pop_size, self.dim))*(self.xMax - self.xMin) + self.xMin
+        updatedPopulation = pd.DataFrame(np.where(logicArray, randomArray, newPopulation))
+
+        # Compute new Fitness
+        fitness = newPopulation.apply(self.get_fitness, axis=1).copy()
+        updatedPopulation = updatedPopulation.assign(Fitness=fitness)
+
+        return updatedPopulation
+
+    def generation(self):
+        ## Mutation
+        def make_index_list(index):
+            indexList = list(range(0, self.pop_size))
+            indexList.remove(index)
+            return np.random.choice(indexList, size=3, replace=False)
+
+        def mutate_rand_1(indexes):
+            baseVector    = self.population.iloc[indexes[0], :-1]
+            randomVector1 = self.population.iloc[indexes[1], :-1]
+            randomVector2 = self.population.iloc[indexes[2], :-1]
+            return baseVector + self.param_F*(randomVector1 - randomVector2)
+
+        randomNums = np.array(list(map(make_index_list,
+                                          list(range(0, self.pop_size)))))
+
+
+        self.mutatedPopulation = pd.DataFrame(np.apply_along_axis(mutate_rand_1, 1, randomNums))
+
+        ## Crossover
+        # randomArray: Roll probability for each dimension of every specimen
+        # randomK:     Sample one random integer K from [0, dim] for each specimen
+        # maskArray:   Mask array for logical comparisons
+        randomArray = np.random.rand(self.pop_size, self.dim)
+        randomK     = np.random.randint(0, self.dim, size=self.pop_size)
+        maskArray   = np.arange(self.dim)
+
+        # Reshape and tile arrays
+        randomK       = np.tile(randomK[:, np.newaxis], (1, self.dim))
+        maskArray     = np.tile(maskArray[np.newaxis, :], (self.pop_size, 1))
+
+        # Substitute mutatedPopulation values if
+        #   (randomArray <= cross_rate) OR (randomK == column)
+        #   In other words, Keep old values only if (randomArray > cross_rate) AND (randomK != column)                                   other=self.mutatedPopulation)
+        newPopulation = pd.DataFrame(np.where(np.logical_or(np.less_equal(randomArray, self.cross_rate),
+                                                             np.equal(randomK, maskArray)),
+                                              self.mutatedPopulation, self.population.iloc[:, :-1]))
+        # Compute new fitness values and treat exceptions
+        self.trialPopulation = self.set_state(newPopulation)
+
+        # Selection: substitute Trial Vector only if it has smaller Fitness than original vector
+        self.population = self.population.where(self.population["Fitness"] < self.trialPopulation["Fitness"],
+                                                other=self.trialPopulation)
+        return self.population
+
 class DifferentialEvolution(EvolutionaryAlgorithm):
     def __init__(self, dim=2, func_id=1, pop_size=30):
         # Initialize superclass EvolutionaryAlgorithm
@@ -82,7 +193,7 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         # Select Exception treatment type
         choices = {
             'random':
-                pd.DataFrame(np.where(logicArray, np.random.random()*(self.xMax - self.xMin) + self.xMin, newPopulation)),
+                pd.DataFrame(np.where(logicArray, np.random.random((self.pop_size, self.dim))*(self.xMax - self.xMin) + self.xMin, newPopulation)),
             'none':
                 pd.DataFrame(np.where(logicArray, np.NaN, newPopulation)),
             'edge':

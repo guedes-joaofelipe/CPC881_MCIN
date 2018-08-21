@@ -7,8 +7,8 @@ from multiprocessing    import Pool
 
 from optimize   import optimize
 from utils      import make_tables
-from evolution  import (EvolutionStrategyMod, DifferentialEvolution,
-                        OppositionDifferentialEvolution)
+from evolution  import (DifferentialEvolution,
+                        OppositionDifferentialEvolution, DifferentialEvolutionSimple)
 import dirs
 
 
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     funcList = [2]
 
     # Problem and Evaluation parameters
-    algorithm   = DifferentialEvolution
+    algorithm   = DifferentialEvolutionSimple
     numRuns     = 51
     popSize     = 50
 
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     for dim in dimList:
         for funcId in funcList:
             # FILENAME
-            fileName = "TEST_DE_F_{}_runs{}_dim{}".format(funcId, numRuns, dim)
+            fileName = "SIMPLE_DE_F_{}_runs{}_dim{}".format(funcId, numRuns, dim)
 
             print("\nFunction {:2d}\n".format(funcId))
 
