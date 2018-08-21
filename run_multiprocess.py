@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
     # Problem and Evaluation parameters
     algorithm   = DifferentialEvolutionSimple
-    numRuns     = 50
+    numRuns     = 51
     popSize     = 50
 
     successRate = 0
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     #TODO:  Pass parameters as a dictionary/json
     #       Save parameters in a file for reference
 
-    numProcesses= os.cpu_count()
+    numProcesses= os.cpu_count()-1
     print("Using {} cores.".format(numProcesses))
 
     start = time.perf_counter()

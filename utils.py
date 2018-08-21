@@ -87,6 +87,7 @@ def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
         # input()
         for file in tqdm(fileList):
             file = file.replace("\\", "/")
+            print("\n", file)
 
             # Get file folder structure for saving
             folderStructure = file.split("/")[:-1]
@@ -96,8 +97,6 @@ def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
 
             data = pd.read_hdf(file)
             errorTable = pd.DataFrame()
-            # print(data)
-            # input()
 
             # Get function number and store as Key
             try:
@@ -113,27 +112,22 @@ def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
             print("\n", key)
 
             # For each run, get evolution of best errors per generation
+            errorTable = pd.DataFrame({'MaxFES': defs.fesScale}).set_index('MaxFES')
             for run in range(0, num_runs):
                 index = (data['Run'] == run)
 
-                subTable = pd.DataFrame(data.values[index, :])
+                subTable = pd.DataFrame(data.values[index, :-1])
                 generations = subTable.shape[0]
 
                 # Only include a pre-determined set of generations
                 fesIndex = (generations - 1)*np.array(defs.fesScale)
-                fesIndex = fesIndex.round()
-                # print(subTable )
-                # # print(subTable.iloc[0,:])
-                # print(subTable.shape)
-                # print(generations)
-                # print(fesIndex)
-                # input()
+                fesIndex = fesIndex.round().astype(int)
 
                 # Get only the best individuals
-                subTable = subTable.iloc[:, :-1].min(axis=1, skipna=False)
+                subTable = subTable.min(axis=1, skipna=False)
 
                 # Append Run data to the table
-                errorTable['Run {:2d}'.format(run)] = subTable.iloc[fesIndex.astype(int)]
+                errorTable['Run {:2d}'.format(run)] = subTable.iloc[fesIndex].values
 
             # Add a column with each function's mean error over all runs
             errorTable["Mean"] = errorTable.mean(axis=1, skipna=True)
@@ -150,7 +144,7 @@ def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
 
                 savePath += "{}_table2_{}_dim{}.xlsx".format(algorithm, key, dim)
                 print(savePath)
-                errorTable.to_excel(savePath, float_format="%.8f", index_label='Gen')
+                errorTable.to_excel(savePath, float_format="%.8f", index_label='MaxFES')
 
         return True
 

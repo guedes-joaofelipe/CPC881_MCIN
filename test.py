@@ -17,7 +17,7 @@ func_id = 1
 
 # TEST EVOLUTION ALGS
 # alg = DifferentialEvolution(dim=dim, pop_size=popSize)
-alg = OppositionDifferentialEvolutionSimple(func_id=1, dim=dim, pop_size=popSize)
+alg = DifferentialEvolutionSimple(func_id=1, dim=dim, pop_size=popSize)
 # print(alg.population.shape)
 print(alg.population)
 # alg.mutation(alg.mutation_rand_1)
