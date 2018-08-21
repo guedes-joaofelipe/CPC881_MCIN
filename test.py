@@ -1,3 +1,4 @@
+import os
 import time
 import numpy            as np
 import pandas           as pd
@@ -13,42 +14,81 @@ dim     = 2
 popSize = 30
 func_id = 1
 
-# alg = DifferentialEvolution(dim=dim, pop_size=popSize)
-alg = OppositionDifferentialEvolution(func_id=1, dim=dim, pop_size=popSize)
-# print(alg.population.shape)
-print(alg.population)
-# alg.mutation(alg.mutation_rand_1)
-# # print(alg.mutatedPopulation)
-# alg.crossover_binomial(alg.mutatedPopulation)
-# # print(alg.trialPopulation)
-# alg.generation_jumping()
-
-
-# index = 2
-# targetVector = alg.population.iloc[index, :]
-# for i in range(10):
-#
-alg.generation()
+# # TEST EVOLUTION ALGS
+# # alg = DifferentialEvolution(dim=dim, pop_size=popSize)
+# alg = OppositionDifferentialEvolution(func_id=1, dim=dim, pop_size=popSize)
+# # print(alg.population.shape)
 # print(alg.population)
-alg.generation()
-# # # alg.crossover_binomial(alg.mutation())
-print(alg.population)
+# # alg.mutation(alg.mutation_rand_1)
+# # # print(alg.mutatedPopulation)
+# # alg.crossover_binomial(alg.mutatedPopulation)
+# # # print(alg.trialPopulation)
+# # alg.generation_jumping()
+#
+# # index = 2
+# # targetVector = alg.population.iloc[index, :]
+# # for i in range(10):
+# #
+# alg.generation()
+# # print(alg.population)
+# alg.generation()
+# # # # alg.crossover_binomial(alg.mutation())
+# print(alg.population)
+#
+# # tablePath = dirs.tables+"DE/"+"DE_table2_F14_dim10.xlsx"
+# # plot_evolution(tablePath, fig_name="auto", save=True)
 
-# tablePath = dirs.tables+"DE/"+"DE_table2_F14_dim10.xlsx"
-# plot_evolution(tablePath, fig_name="auto", save=True)
+# TEST PYGMO ALGS
+import pygmo    as pg
 
-# import pygmo    as pg
-#
-# prob = pg.problem(pg.schwefel(30))
-#
-# alg = pg.algorithm(pg.sade(gen=100))
-#
-# arch = pg.archipelago(16, algo=alg, prob=prob, pop_size=20)
-#
-# arch.evolve(10)
-#
-# arch.wait()
-#
-# results = [isl.get_population().champion_f[0] for isl in arch]
-#
-# print(results)
+errorTol = 1e-08
+# funcList = [1, 2, 6, 7, 9, 14]   # Assignment function list
+funcList = [2]   # Assignment function list
+dimList  = [10]
+numRuns  = 50
+
+popSize  = 50
+param_F  = 0.9
+param_CR = 0.9
+
+numProcesses= os.cpu_count()-2
+# numEvolves = int(np.ceil(numRuns/numProcesses))
+print("numProcesses ", numProcesses)
+
+for dim in dimList:
+    maxFEvals = 10000*dim
+    # Compute upper bound for generation numbers
+    fEvalsGen = popSize
+    # maxGen    = maxFEvals/fEvalsGen
+    # print(maxGen)
+    maxGen    = int(maxFEvals/fEvalsGen)
+    # print(maxGen)
+    # maxGen    = 3500
+
+    for funcId in funcList:
+        print("\nFunction {}\nDim {}\nMax Generations {}\nNum Runs".format(funcId, dim, maxGen, numRuns))
+
+        fileName = "TEST_DE_F_{}_runs{}_dim{}".format(funcId, 24, dim)
+
+        prob = pg.problem(pg.cec2014(prob_id=funcId, dim=dim))
+
+        alg = pg.algorithm(pg.de(gen=maxGen, F=param_F, CR=param_CR, variant=2, xtol=errorTol, ftol=errorTol))
+
+        arch = pg.archipelago(numRuns, algo=alg, prob=prob, pop_size=popSize)
+
+        arch.evolve(1)
+
+        arch.wait()
+
+        results = [isl.get_population().get_f() for isl in arch]
+        # results = pd.DataFrame([isl.get_population().champion_f[0] for isl in arch])
+        print(np.shape(results))
+
+        # print(arch)
+        # print(arch[0].get_population())
+
+        results.to_hdf(dirs.results+fileName+".hdf", "Only")
+
+data = pd.read_hdf(dirs.results+fileName+".hdf")
+print(data)
+print(data.shape)

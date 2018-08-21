@@ -122,12 +122,12 @@ def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
                 # Only include a pre-determined set of generations
                 fesIndex = (generations - 1)*np.array(defs.fesScale)
                 fesIndex = fesIndex.round()
-                print(subTable )
-                # print(subTable.iloc[0,:])
-                print(subTable.shape)
-                print(generations)
-                print(fesIndex)
-                input()
+                # print(subTable )
+                # # print(subTable.iloc[0,:])
+                # print(subTable.shape)
+                # print(generations)
+                # print(fesIndex)
+                # input()
 
                 # Get only the best individuals
                 subTable = subTable.iloc[:, :-1].min(axis=1, skipna=False)

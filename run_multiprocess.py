@@ -6,6 +6,7 @@ from tqdm               import tqdm
 from multiprocessing    import Pool
 
 from optimize   import optimize
+from utils      import make_tables
 from evolution  import (EvolutionStrategyMod, DifferentialEvolution,
                         OppositionDifferentialEvolution)
 import dirs
@@ -27,8 +28,8 @@ def aux_optim(algorithm, run_id=0, func_id=5, dim=2, pop_size=30, max_f_evals='a
 
 if __name__ == "__main__":
     dimList  = [10]
-    funcList = [1, 2, 6, 7, 9, 14]   # Assignment function list
-    # funcList = [2]
+    # funcList = [1, 2, 6, 7, 9, 14]   # Assignment function list
+    funcList = [2]
 
     # Problem and Evaluation parameters
     algorithm   = DifferentialEvolution
@@ -44,13 +45,14 @@ if __name__ == "__main__":
 
     numProcesses= os.cpu_count()-2
 
+    start = time.perf_counter()
     for dim in dimList:
         for funcId in funcList:
-            fileName = "DE_F{}_runs{}_dim{}".format(funcId, numRuns, dim)
+            # FILENAME
+            fileName = "TEST_DE_F_{}_runs{}_dim{}".format(funcId, numRuns, dim)
 
             print("\nFunction {:2d}\n".format(funcId))
 
-            start = time.perf_counter()
             hist = pd.DataFrame()
             with Pool(numProcesses) as p:
                 # Build argument list
@@ -70,16 +72,18 @@ if __name__ == "__main__":
                 hist = pd.concat(hist, ignore_index=True)
                 successRate = np.sum(np.where(np.less_equal(error, targetError), 1, 0))
 
-            elapsed = time.perf_counter() - start
             successRate = (successRate/numRuns)*100
 
             print("\nhist shape: ", hist.shape)
 
-            print("\nElapsed time: {:.2f}s".format(elapsed) )
             print("Success rate: {:.2f}%\n".format(successRate))
 
             # Save results
             hist.to_hdf(dirs.results+fileName+"_succ_{:.2f}.hdf".format(successRate), "Only")
+
+    # Show elapsed time after all runs
+    elapsed = time.perf_counter() - start
+    print("\nElapsed time: {:.2f}s".format(elapsed))
 
     # After results are ready, format them into Excel tables
     algList = ["DE"]
