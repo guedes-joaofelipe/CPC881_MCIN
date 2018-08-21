@@ -17,10 +17,9 @@ class DifferentialEvolutionSimple:
         # Initialize parameters
         self.dim        = dim
         self.pop_size   = pop_size
-        # self.xMin       = -100       # Search space limits
-        # self.xMax       =  100       #
         self.xMin       = -100       # Search space limits
         self.xMax       =  100       #
+
         self.func_id      = func_id
         self.fitnessEvals = 0
 
@@ -32,9 +31,13 @@ class DifferentialEvolutionSimple:
         self.problem = pg.problem(pg.cec2014(prob_id=self.func_id, dim=self.dim))
 
         # Initialize population DataFrame and compute initial Fitness
+        self.init_states()
+
+    def init_states(self):
         specimen = np.random.random((self.pop_size, self.dim))*(self.xMax - self.xMin) + self.xMin
 
         self.population = self.set_state(pd.DataFrame(specimen)).copy()
+        return self.population
 
 
     def get_fitness(self, specimen):
@@ -69,7 +72,7 @@ class DifferentialEvolutionSimple:
                                    np.greater(newPopulation, self.xMax))
 
         # Substitute offending numbers with a random number from random array
-        randomArray = np.random.random((self.pop_size, self.dim))*(self.xMax - self.xMin) + self.xMin
+        randomArray = np.random.random((newPopulation.shape[0], self.dim))*(self.xMax - self.xMin) + self.xMin
         updatedPopulation = pd.DataFrame(np.where(logicArray, randomArray, newPopulation))
 
         # Compute new Fitness
@@ -122,6 +125,77 @@ class DifferentialEvolutionSimple:
         self.population = self.population.where(self.population["Fitness"] < self.trialPopulation["Fitness"],
                                                 other=self.trialPopulation)
         return self.population
+
+class OppositionDifferentialEvolutionSimple(DifferentialEvolutionSimple):
+    def __init__(self, dim=2, func_id=1, pop_size=30):
+        super().__init__(dim=dim, func_id=func_id, pop_size=pop_size)
+
+        # Parameters
+        self.param_F    = 0.9   # Mutation parameter F
+        self.cross_rate = 0.9   # Crossover probability
+        self.jump_rate  = 0.3
+
+    def init_states(self):
+        '''
+            Randomly initialize states values following a uniform initialization
+            between limits xMax and xMin. Compute opposite population with opposite
+            state values. Initial population will be composed of best individuals
+            of set [population, opposite_population]
+
+            self.population is a DataFrame with one row per individual, one column per
+            dimension and one extra for fitness values.
+
+            Arguments: None
+
+            Returns: self.population, a DataFrame with dimensions (population size)
+            by (dimension + 1).
+        '''
+        # Initialize population uniformly over search space
+        pop = np.random.random((self.pop_size, self.dim))*(self.xMax - self.xMin) + self.xMin
+
+        # Compute opposite population and concatenate with original population
+        initPopulation = pd.DataFrame(np.concatenate((pop, opposite_number(pop, self.xMin, self.xMax))))
+        initPopulation  = self.set_state(initPopulation, substitute='random')
+
+        # Keep only the fittest from set [pop, opposite_pop]
+        self.population = initPopulation.sort_values("Fitness", ascending=True, inplace=False).iloc[:self.pop_size, :]
+        self.population = self.population.reset_index(drop=True)
+        return self.population.copy()
+
+    def generation_jumping(self):
+        '''
+            Compute an opposite population to self.population and keep fittest specimens.
+            Limits are given by each variables minimum and maximum values, instead
+            of using the search space limits.
+        '''
+        # Create arrays containing min and max values per variable with same
+        # shape as self.population
+        infLimit = self.population.iloc[:, :-1].min(axis=0).values
+        supLimit = self.population.iloc[:, :-1].max(axis=0).values
+
+        # Reshape and tile arrays
+        infLimit = np.tile(infLimit[np.newaxis, :], (self.pop_size, 1))
+        supLimit = np.tile(supLimit[np.newaxis, :], (self.pop_size, 1))
+
+        oppositePop = opposite_number(self.population.iloc[:, :-1], infLimit, supLimit)
+        oppositePop = self.set_state(oppositePop, substitute='random')
+
+        expandedPopulation = pd.concat([oppositePop, self.population], axis=0, ignore_index=True)
+
+        # Keep only the fittest from set [pop, opposite_pop]
+        self.population = expandedPopulation.sort_values("Fitness", ascending=True, inplace=False).reset_index(drop=True)
+        self.population = self.population.iloc[:self.pop_size, :].reset_index(drop=True)
+
+        return self.population
+
+    def generation(self):
+        super().generation()
+        if np.random.rand() < self.jump_rate:
+            print("JUMPED")
+            self.generation_jumping()
+
+        return self.population
+
 
 class DifferentialEvolution(EvolutionaryAlgorithm):
     def __init__(self, dim=2, func_id=1, pop_size=30):
@@ -226,7 +300,20 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         self.fitnessEvals +=1
         return self.problem.fitness(specimen)[0]
 
-    def mutation_rand_1(self, index=None, param_F=0.1):
+    def mutation_best_1(self, indexes):
+        '''
+            DE/best/1 mutation scheme
+            Every specimen produces a mutated/donor vector each generation.
+
+            Arguments:
+                index   : Target vector index.
+        '''
+        bestVector    = self.population.iloc[self.population.idxmin(axis=0)[-1], :-1]
+        randomVector1 = self.population.iloc[indexes[1], :-1]
+        randomVector2 = self.population.iloc[indexes[2], :-1]
+        return bestVector + self.param_F*(randomVector1 - randomVector2)
+
+    def mutation_rand_1(self, indexes):
         '''
             DE/rand/1 mutation scheme
             Every baseSpecimen produces a mutated/donor vector each generation.
@@ -235,71 +322,29 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
                 baseSpecimen, index are mantained for compatibility.
                 param_F: F parameter. Must be a positive real number.
         '''
-        # Select three random indexes for random mutation vectors, different from Index
-        randomNum0 = index
-        randomNum1 = index
-        randomNum2 = index
-
-        while randomNum0 == index or randomNum1 == index or randomNum2 == index:
-            randomNums = np.random.choice(self.pop_size, size=3, replace=False)
-
-            randomNum0 = randomNums[0]
-            randomNum1 = randomNums[1]
-            randomNum2 = randomNums[2]
-
-        # Assign the random vectors
-        baseSpecimen  = self.population.iloc[randomNum0, :-1]   # Don't get Fitness column
-        randSpecimen1 = self.population.iloc[randomNum1, :-1]
-        randSpecimen2 = self.population.iloc[randomNum2, :-1]
-
-        # Perform mutation
-        mutatedSpecimen = baseSpecimen + param_F*(randSpecimen1 - randSpecimen2)
-
-        return mutatedSpecimen
-
-    def mutation_best_1(self, index, param_F=0.1):
-        '''
-            DE/best/1 mutation scheme
-            Every specimen produces a mutated/donor vector each generation.
-
-            Arguments:
-                specimen: Target vector of shape (1 by dim+1), including Fitness column
-                index   : Target vector index.
-        '''
-        # Select two random indexes for random mutation vectors, different from Index
-        randomNum0 = index
-        randomNum1 = index
-
-        while randomNum0 == index or randomNum1 == index:
-            randomNums = np.random.choice(self.pop_size, size=2, replace=False)
-
-            randomNum0 = randomNums[0]
-            randomNum1 = randomNums[1]
-
-        # Assign the mutation vectors
-        bestSpecimen  = self.population.sort_values("Fitness", ascending=True, inplace=False).iloc[0, :-1]
-        randSpecimen0 = self.population.iloc[randomNum0, :-1]
-        randSpecimen1 = self.population.iloc[randomNum1, :-1]
-
-        mutatedSpecimen = bestSpecimen + param_F*(randSpecimen1 - randSpecimen2)
-
-        return mutatedSpecimen
+        baseVector    = self.population.iloc[indexes[0], :-1]
+        randomVector1 = self.population.iloc[indexes[1], :-1]
+        randomVector2 = self.population.iloc[indexes[2], :-1]
+        return baseVector + self.param_F*(randomVector1 - randomVector2)
 
     def mutation(self, mutation_scheme):
-        indexList     = list(range(0, self.pop_size))
+        def make_index_list(index):
+            indexList = list(range(0, self.pop_size))
+            indexList.remove(index)
+            return np.random.choice(indexList, size=3, replace=False)
 
-        # Choose F from a list defined by self.param_f
-        listParamF = np.random.choice(self.param_F, size=self.pop_size, replace=True)
+        # # Choose F from a list defined by self.param_f
+        # listParamF = np.random.choice(self.param_F, size=self.pop_size, replace=True)
 
-        # parameterList = chosen_F*np.ones(self.pop_size)
+        # Create list of random indexes
+        randomIndexes = np.array(list(map(make_index_list, list(range(0, self.pop_size)))))
 
         # Mutate every specimen using scheme passed to mutationScheme
-        self.mutatedPopulation = pd.DataFrame(list(
-                                map(mutation_scheme, indexList, listParamF))).reset_index(drop=True)
+        self.mutatedPopulation = pd.DataFrame(np.apply_along_axis(mutation_scheme, 1, randomIndexes))
 
         return self.mutatedPopulation
 
-    def crossover_binomial(self, mutatedPopulation):
+    def crossover_binomial(self):
         '''
             DE binomial crossover. Compose a trial vector based on each mutated
             vector and its corresponding parent. The new vector is composed following:
@@ -312,37 +357,31 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
 
             Returns self.trialPopulation DataFrame with updated fitness column
         '''
-        # # Create random number arrays
-        # Roll probability for each dimension of every specimen
-        randomArray = np.random.rand(mutatedPopulation.shape[0], mutatedPopulation.shape[1])
-        # Sample one random integer K from [0, dim] for each specimen
+        ## Crossover
+        # randomArray: Roll probability for each dimension of every specimen
+        # randomK:     Sample one random integer K from [0, dim] for each specimen
+        # maskArray:   Mask array for logical comparisons
+        randomArray = np.random.rand(self.pop_size, self.dim)
         randomK     = np.random.randint(0, self.dim, size=self.pop_size)
-        # Mask array for logical comparisons
-        maskArray   = np.arange(mutatedPopulation.shape[1])
+        maskArray   = np.arange(self.dim)
 
         # Reshape and tile arrays
-        randomK.shape   = (self.pop_size, 1)
-        randomK         = np.tile(randomK, (1, self.dim))
+        randomK       = np.tile(randomK[:, np.newaxis], (1, self.dim))
+        maskArray     = np.tile(maskArray[np.newaxis, :], (self.pop_size, 1))
 
-        maskArray.shape = (1, mutatedPopulation.shape[1])
-        maskArray       = np.tile(maskArray, (self.pop_size, 1))
-
-        newPopulation = self.population.drop(labels='Fitness', axis=1)
-
-        # Substitute new values for randomArray smaller than Crossover rate
-        newPopulation = newPopulation.where(np.less_equal(randomArray, self.cross_rate),
-                                            other=mutatedPopulation)
-
-        # Substitute new values for K == columns, guaranteeing at least one substitution
-        newPopulation = newPopulation.where(np.not_equal(randomK, maskArray),
-                                            other=mutatedPopulation)
+        # Substitute mutatedPopulation values if
+        #   (randomArray <= cross_rate) OR (randomK == column)
+        #   In other words, Keep old values only if (randomArray > cross_rate) AND (randomK != column)                                   other=self.mutatedPopulation)
+        newPopulation = pd.DataFrame(np.where(np.logical_or(np.less_equal(randomArray, self.cross_rate),
+                                                             np.equal(randomK, maskArray)),
+                                              self.mutatedPopulation, self.population.iloc[:, :-1]))
 
         # Compute new fitness values and treat exceptions
-        self.trialPopulation = self.set_state(newPopulation, substitute='edge')
+        self.trialPopulation = self.set_state(newPopulation, substitute='random')
 
         return self.trialPopulation
 
-    def survivor_selection(self, trialPopulation):
+    def survivor_selection(self):
         '''
             DE survivor selection. A mutant vector is carried over to the next
             generation if its fitness is better or equal than its parent's.
@@ -353,24 +392,17 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
             Returns updated self.population DataFrame
         '''
 
-        # Create and Tile boolean array with comparisons of new and previous fitness values
-        logicArray = np.less_equal(trialPopulation['Fitness'], self.population['Fitness']).values
-        logicArray.shape = (self.pop_size, 1)
-        logicArray = np.tile(logicArray, (1, self.dim+1))
-
-        # Keep mutated specimens only if fitness improves over its parents
-        newPopulation = pd.DataFrame(np.where(logicArray, trialPopulation, self.population))
-
-        newPopulation.columns = self.population.columns # Horrible hack to recover Fitness column name
-
-        self.population = newPopulation.copy()
+        # Selection: compare Fitness of Trial and Donor vectors. Substitute for new
+        # values only if fitness decreases
+        self.population = self.population.where(self.population["Fitness"] < self.trialPopulation["Fitness"],
+                                                other=self.trialPopulation)
 
         return self.population
 
     def generation(self):
         self.mutation(self.mutation_rand_1)
-        self.crossover_binomial(self.mutatedPopulation)
-        self.survivor_selection(self.trialPopulation)
+        self.crossover_binomial()
+        self.survivor_selection()
 
         return self.population
 
@@ -426,11 +458,8 @@ class OppositionDifferentialEvolution(DifferentialEvolution):
         supLimit = self.population.iloc[:, :-1].max(axis=0).values
 
         # Reshape and tile arrays
-        infLimit.shape   = (1, self.dim)
-        supLimit.shape   = (1, self.dim)
-
-        infLimit         = np.tile(infLimit, (self.pop_size, 1))
-        supLimit         = np.tile(supLimit, (self.pop_size, 1))
+        infLimit = np.tile(infLimit[np.newaxis, :], (self.pop_size, 1))
+        supLimit = np.tile(supLimit[np.newaxis, :], (self.pop_size, 1))
 
         oppositePop = opposite_number(self.population.iloc[:, :-1], infLimit, supLimit)
         oppositePop = self.set_state(oppositePop, substitute='random')

@@ -7,7 +7,7 @@ from multiprocessing    import Pool
 
 from optimize       import optimize
 from evolution      import (DifferentialEvolution, OppositionDifferentialEvolution,
-                            DifferentialEvolutionSimple)
+                            DifferentialEvolutionSimple, OppositionDifferentialEvolutionSimple)
 from vis_functions  import plot_evolution
 import dirs
 
@@ -17,11 +17,10 @@ func_id = 1
 
 # TEST EVOLUTION ALGS
 # alg = DifferentialEvolution(dim=dim, pop_size=popSize)
-alg = DifferentialEvolutionSimple(func_id=1, dim=dim, pop_size=popSize)
+alg = OppositionDifferentialEvolutionSimple(func_id=1, dim=dim, pop_size=popSize)
 # print(alg.population.shape)
-# print(alg.population)
+print(alg.population)
 # alg.mutation(alg.mutation_rand_1)
-# # print(alg.mutatedPopulation)
 # alg.crossover_binomial(alg.mutatedPopulation)
 # # print(alg.trialPopulation)
 # alg.generation_jumping()
@@ -30,10 +29,12 @@ alg = DifferentialEvolutionSimple(func_id=1, dim=dim, pop_size=popSize)
 # targetVector = alg.population.iloc[index, :]
 # for i in range(10):
 #
+# alg.generation()
+# print(alg.mutatedPopulation)
+# print(alg.population)
 alg.generation()
-# print(alg.population)
 # # # alg.crossover_binomial(alg.mutation())
-# print(alg.population)
+print(alg.population)
 
 # tablePath = dirs.tables+"DE/"+"DE_table2_F14_dim10.xlsx"
 # plot_evolution(tablePath, fig_name="auto", save=True)
