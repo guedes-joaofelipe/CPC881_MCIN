@@ -11,7 +11,7 @@ numRuns     = 50
 
 # Make all tables
 # algList = ["ES", "ESMod", "DE"]
-algList = ["ODE"]
+algList = ["DE"]
 for algorithm in algList:
     for dim in [10, 30]:
         make_tables(algorithm, dim, numRuns, targetError)

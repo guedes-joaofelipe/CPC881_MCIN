@@ -44,7 +44,7 @@ def optimize(algorithm, func_id=1, dim=2, pop_size=30,  max_f_evals='auto', targ
         print("\nMean Fitness: {:.4f}".format(lastMeanFit))
         print("Best Fitness: {:.4f}\n".format(lastBestFit))
         print("Solution: {:.4f}\nDiff    : {:.4f}\nF Evals:   {}\n".format(solution, solution-lastMeanFit, alg.fitnessEvals))
-        
+
     return errorHist, fitnessHist
 
 if __name__ == "__main__":

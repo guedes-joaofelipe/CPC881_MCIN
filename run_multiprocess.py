@@ -33,13 +33,13 @@ if __name__ == "__main__":
 
     # Problem and Evaluation parameters
     algorithm   = DifferentialEvolutionSimple
-    numRuns     = 51
+    numRuns     = 3
     popSize     = 50
 
     successRate = 0
     targetError = 1e-8
-    max_f_evals = 'auto'
-    # max_f_evals = 1000
+    # max_f_evals = 'auto'
+    max_f_evals = 1000
     #TODO:  Pass parameters as a dictionary/json
     #       Save parameters in a file for reference
 
@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
             print("\nFunction {:2d}\n".format(funcId))
 
-            hist = pd.DataFrame()
+            # hist = pd.DataFrame()
             with Pool(numProcesses) as p:
                 # Build argument list
                 # Arguments: numRuns x [runId, funcId, dim, max_f_evals, targetError]
@@ -69,6 +69,10 @@ if __name__ == "__main__":
 
                     bestError = errorHist.drop(labels='Run', axis=1).min()
                     error.append(bestError)
+                # print(fitnessHist)
+                # input()
+                print(errorHist)
+                input()
 
                 hist = pd.concat(hist, ignore_index=True)
                 successRate = np.sum(np.where(np.less_equal(error, targetError), 1, 0))
