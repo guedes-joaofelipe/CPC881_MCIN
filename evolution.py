@@ -37,7 +37,7 @@ class ParticleSwarmOptimization:
                 'CostFunction': self.get_fitness,
                 'nVar': self.dim,
                 'VarMin': self.xMin,   # Alternatively you can use a "numpy array" with nVar elements, instead of scalar
-                'VarMax': self.xMax,    # Alternatively you can use a "numpy array" with nVar elements, instead of scalar
+                'VarMax': self.xMax,   # Alternatively you can use a "numpy array" with nVar elements, instead of scalar
             }
 
     def get_fitness(self, vector):
@@ -53,19 +53,8 @@ class ParticleSwarmOptimization:
         return self.problem.fitness(vector)[0]
 
     def all_generations(self):
-        # maxIter = round(self.dim*10000/self.pop_size)
-        # # maxIter = 10
-        # print(maxIter)
-        # # input()
         gbest, particlesGen = PSO(self.psoProblem, MaxIter = self.maxIters, PopSize = self.pop_size,
                                     c1 = self.c1, c2 = self.c2, w = self.w, wdamp = self.wdamp)
-
-        # for particles in particlesGen:
-        #     particleList = np.empty((self.pop_size, self.dim+1))
-        #     for i in range(len(particles)):
-        #         for j in range(self.dim):
-        #             particleList[i, j] = particles[i]['position'][j]
-        #         particleList[i, self.dim] = particles[i]['cost']
 
         fitnessHist = np.empty((self.maxIters, self.pop_size))
         for i in range(self.maxIters):
@@ -74,12 +63,6 @@ class ParticleSwarmOptimization:
                 fitnessHist[i, j] = particles[j]['cost']
 
         fitnessDf = pd.DataFrame(fitnessHist)
-        # print(fitnessDf)
-        # input()
-
-        # self.population = pd.DataFrame(fitnessHist[:, :-1])
-        # self.population["Fitness"] = particleList[:, -1]
-
 
         return fitnessDf
 
@@ -220,11 +203,11 @@ class DifferentialEvolutionSimple:
         return self.population
 
 class OppositionDifferentialEvolutionSimple(DifferentialEvolutionSimple):
-    def __init__(self, dim=2, func_id=1, pop_size=30):
+    def __init__(self, dim=2, func_id=1, pop_size=100):
         super().__init__(dim=dim, func_id=func_id, pop_size=pop_size)
 
         # Parameters
-        self.param_F    = 0.9   # Mutation parameter F
+        self.param_F    = 0.5   # Mutation parameter F
         self.cross_rate = 0.9   # Crossover probability
         self.jump_rate  = 0.3
 

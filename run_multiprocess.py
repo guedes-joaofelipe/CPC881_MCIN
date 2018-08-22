@@ -33,13 +33,13 @@ if __name__ == "__main__":
 
     # Problem and Evaluation parameters
     algorithm   = DifferentialEvolutionSimple
-    numRuns     = 3
-    popSize     = 50
+    numRuns     = 51
+    popSize     = 100
 
     successRate = 0
     targetError = 1e-8
-    # max_f_evals = 'auto'
-    max_f_evals = 1000
+    max_f_evals = 'auto'
+    # max_f_evals = 1000
     #TODO:  Pass parameters as a dictionary/json
     #       Save parameters in a file for reference
 
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     for dim in dimList:
         for funcId in funcList:
             # FILENAME
-            fileName = "SIMPLE_DE_F_{}_runs{}_dim{}".format(funcId, numRuns, dim)
+            fileName = "SIMPLE_ODE_F_{}_runs{}_dim{}".format(funcId, numRuns, dim)
 
             print("\nFunction {:2d}\n".format(funcId))
 
@@ -69,7 +69,7 @@ if __name__ == "__main__":
 
                     bestError = errorHist.drop(labels='Run', axis=1).min()
                     error.append(bestError)
-                    
+
                 hist = pd.concat(hist, ignore_index=True)
                 successRate = np.sum(np.where(np.less_equal(error, targetError), 1, 0))
 

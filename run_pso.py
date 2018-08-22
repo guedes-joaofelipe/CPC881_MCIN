@@ -47,10 +47,9 @@ def aux_optim(run_id=0, func_id=5, dim=2, pop_size=30, max_iters=100):
 
 if __name__ == "__main__":
     # dimList = [10, 30]
-    dimList = [10]
+    dimList = [30]
     # funcList= [1, 2, 6, 7, 9, 14]   # Assignment function list
-    funcList= [2, 6, 7, 9, 14]   # Assignment function list
-    # funcList= [2]
+    funcList= [1]
 
     popSize = 50
 
