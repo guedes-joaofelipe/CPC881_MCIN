@@ -69,11 +69,7 @@ if __name__ == "__main__":
 
                     bestError = errorHist.drop(labels='Run', axis=1).min()
                     error.append(bestError)
-                # print(fitnessHist)
-                # input()
-                print(errorHist)
-                input()
-
+                    
                 hist = pd.concat(hist, ignore_index=True)
                 successRate = np.sum(np.where(np.less_equal(error, targetError), 1, 0))
 
