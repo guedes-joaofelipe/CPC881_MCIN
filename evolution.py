@@ -26,10 +26,17 @@ class ParticleSwarmOptimization:
         self.func_id      = func_id
         self.fitnessEvals = 0
 
-        self.c1 = 1.4962
-        self.c2 = 1.4962
-        self.w = 0.7298
+        # Original parameters
+        self.c1    = 2.0
+        self.c2    = 2.0
+        self.w     = 1.0
         self.wdamp = 1.0
+
+        # Yarpiz default
+        # self.c1    = 1.4962
+        # self.c2    = 1.4962
+        # self.w     = 0.7298
+        # self.wdamp = 1.0
 
         self.problem = pg.problem(pg.cec2014(prob_id=self.func_id, dim=self.dim))
 
