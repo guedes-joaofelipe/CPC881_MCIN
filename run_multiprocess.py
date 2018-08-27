@@ -8,7 +8,8 @@ from multiprocessing    import Pool
 from optimize   import optimize
 from utils      import make_tables
 from evolution  import (DifferentialEvolution, DifferentialEvolutionSimple,
-                        OppositionDifferentialEvolution, OppositionDifferentialEvolutionSimple)
+                        OppositionDifferentialEvolution, OppositionDifferentialEvolutionSimple,
+                        ParticleSwarmOptimizationSimple)
 import dirs
 
 
@@ -27,14 +28,15 @@ def aux_optim(algorithm, run_id=0, func_id=5, dim=2, pop_size=30, max_f_evals='a
 
 
 if __name__ == "__main__":
-    dimList  = [10, 30]
+    # dimList  = [10, 30]
+    dimList  = [10]
     funcList = [1, 2, 6, 7, 9, 14]   # Assignment function list
     # funcList = [2]
 
     # Problem and Evaluation parameters
-    algorithm   = DifferentialEvolutionSimple
-    numRuns     = 51
-    popSize     = 100
+    algorithm   = ParticleSwarmOptimizationSimple
+    numRuns     = 10
+    popSize     = 20
 
     successRate = 0
     targetError = 1e-8
@@ -50,7 +52,7 @@ if __name__ == "__main__":
     for dim in dimList:
         for funcId in funcList:
             # FILENAME
-            fileName = "SIMPLE_ODE_F_{}_runs{}_dim{}".format(funcId, numRuns, dim)
+            fileName = "TEST_SIMPLE_PSO_F_{}_runs{}_dim{}".format(funcId, numRuns, dim)
 
             print("\nFunction {:2d}\n".format(funcId))
 

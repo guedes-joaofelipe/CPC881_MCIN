@@ -1,20 +1,22 @@
 import os
-import numpy            as np
-import pandas           as pd
-from tqdm               import tqdm
-from glob               import glob
+import numpy     as np
+import pandas    as pd
+from tqdm        import tqdm
+from glob        import glob
 
 import dirs
 import defs
 
-def opposite_number(x, infLim, supLim):
+def opposite_number(x, infLim, supLim, k=1.0):
     '''
         Compute opposite number in relation to the n-dimensional real input x.
         Input must be limited to [infLim, supLim] in every dimension.
 
         Returns x_opposite
     '''
-    x_opposite = infLim + supLim - x
+    if k == 'random':
+        k = np.random.random(size=np.shape(x))
+    x_opposite = k*(infLim + supLim) - x
     return x_opposite
 
 def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):

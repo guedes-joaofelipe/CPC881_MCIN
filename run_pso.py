@@ -1,10 +1,9 @@
 import os
 import time
-import numpy    as np
-import pandas   as pd
-import pygmo    as pg
-from glob       import glob
-from tqdm       import tqdm
+import numpy            as np
+import pandas           as pd
+from glob               import glob
+from tqdm               import tqdm
 from multiprocessing    import Pool
 
 # import yarpiz   as yp
@@ -53,11 +52,12 @@ if __name__ == "__main__":
 
     popSize = 20
 
-    numRuns = 51
+    numRuns = 1
     successRate = 0
     targetError = 1e-8
 
-    numProcesses= os.cpu_count()-1
+    # numProcesses= os.cpu_count()-1
+    numProcesses = 1
     print("Using {} cores.".format(numProcesses))
 
     start = time.perf_counter()

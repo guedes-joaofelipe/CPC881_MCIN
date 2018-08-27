@@ -7,19 +7,20 @@ from multiprocessing    import Pool
 
 from optimize       import optimize
 from evolution      import (DifferentialEvolution, OppositionDifferentialEvolution,
-                            DifferentialEvolutionSimple, OppositionDifferentialEvolutionSimple)
+                            DifferentialEvolutionSimple, OppositionDifferentialEvolutionSimple,
+                            ParticleSwarmOptimizationSimple)
 from vis_functions  import plot_evolution
 import dirs
 
 dim     = 2
-popSize = 10
+popSize = 5
 func_id = 1
 
 # TEST EVOLUTION ALGS
 # alg = DifferentialEvolution(dim=dim, pop_size=popSize)
-alg = DifferentialEvolutionSimple(func_id=1, dim=dim, pop_size=popSize)
+alg = ParticleSwarmOptimizationSimple(func_id=1, dim=dim, pop_size=popSize)
 # print(alg.population.shape)
-print(alg.population)
+# print(alg.population)
 # alg.mutation(alg.mutation_rand_1)
 # alg.crossover_binomial(alg.mutatedPopulation)
 # # print(alg.trialPopulation)
@@ -29,12 +30,14 @@ print(alg.population)
 # targetVector = alg.population.iloc[index, :]
 # for i in range(10):
 #
-# alg.generation()
+# print(alg.bestVector)
+alg.generation()
+alg.generation()
 # print(alg.mutatedPopulation)
 # print(alg.population)
-alg.generation()
+# alg.generation()
 # # # alg.crossover_binomial(alg.mutation())
-print(alg.population)
+# print(alg.population)
 
 # tablePath = dirs.tables+"DE/"+"DE_table2_F14_dim10.xlsx"
 # plot_evolution(tablePath, fig_name="auto", save=True)

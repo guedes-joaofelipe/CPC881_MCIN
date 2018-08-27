@@ -4,6 +4,7 @@ import pygmo    as pg
 from copy       import copy
 
 from utils      import opposite_number
+from yarpiz     import PSO, GOPSO
 
 class EvolutionaryAlgorithm:
     def __init__(self, dim=2, pop_size=10):
@@ -12,8 +13,140 @@ class EvolutionaryAlgorithm:
 
         self.fitnessEvals   = 0
 
+class ParticleSwarmOptimizationSimple:
+    def __init__(self, func_id, pop_size = 100, dim=10, max_iters=100):
+        self.dim        = dim
+        self.pop_size   = pop_size
+        self.xMin       = -100        # Search space limits
+        self.xMax       =  100        #
+        self.vMin       = self.xMin/2 # Velocity limits
+        self.vMax       = self.xMax/2 #
 
-from yarpiz import PSO
+        self.func_id      = func_id
+        self.fitnessEvals = 0
+
+        # Debug settings
+        self.c1    = 1.0
+        self.c2    = 1.0
+        self.w     = 1.0
+        self.wdamp = 1.0
+
+        # # Yarpiz default
+        # self.c1    = 1.4962
+        # self.c2    = 1.4962
+        # self.w     = 0.7298
+        # self.wdamp = 1.0
+
+        self.problem = pg.problem(pg.cec2014(prob_id=self.func_id, dim=self.dim))
+
+        self.init_states()
+
+    def init_states(self):
+        randomPositions = np.random.random((self.pop_size, self.dim))*(self.xMax - self.xMin) + self.xMin
+
+        # Initialize population randomly
+        self.population   = self.set_state(pd.DataFrame(randomPositions)).copy()
+        self.velocity     = pd.DataFrame(np.zeros((self.pop_size, self.dim)))
+
+        # Update best positions and costs found per particle
+        self.previousBest = self.population.copy()
+
+        # Update Global best position and cost
+        self.update_global_best()
+        return self.population
+
+    def get_fitness(self, vector):
+        '''
+            Wrapper that returns fitness value for state input vector and increments
+            number of fitness evaluations.
+
+            Argument: vector. State vector of length (dim).
+
+            Returns : Fitness for given input state as evaluated by target function.
+        '''
+        self.fitnessEvals +=1
+        return self.problem.fitness(vector)[0]
+
+    def update_previous_best(self, population):
+        # Keep track of best position found per particle
+        # If new position's fitness is greater than current best's, keep current best
+        # Else, store new fitness it as the new best
+        self.previousBest.where(population['Fitness'] >= self.previousBest['Fitness'], other=population)
+        return self.previousBest
+
+
+    def update_global_best(self):
+        self.bestVector = self.previousBest.sort_values("Fitness", ascending=True, inplace=False).reset_index(drop=True).iloc[0, :]
+        return self.bestVector
+
+    def set_state(self, newPopulation, substitute='random'):
+        '''
+            Function to attribute new values to a population DataFrame.
+            Guarantees correct fitness values for each state update.
+            Includes specimen viability evaluation and treatment.
+
+            Arguments:
+                newPopulation   : Population DataFrame with new state values
+                substitute      :
+                    'random': re-initializes non-viable vectors;
+            Returns: updatedPopulation, a population DataFrame with the input values
+            checked for viability and updated fitness column.
+        '''
+        newPopSize = newPopulation.shape[0]
+        ## Exception Treatment: Checks if states are inside search space. If not, reinitialize
+        # Create comparison vector
+        logicArray = np.logical_or(np.less(newPopulation, self.xMin),
+                                   np.greater(newPopulation, self.xMax))
+
+        # Substitute offending numbers with a random number from random array
+        randomArray = np.random.random((newPopSize, self.dim))*(self.xMax - self.xMin) + self.xMin
+        updatedPopulation = pd.DataFrame(np.where(logicArray, randomArray, newPopulation))
+
+        # Compute new Fitness
+        fitness = newPopulation.apply(self.get_fitness, axis=1).copy()
+        updatedPopulation = updatedPopulation.assign(Fitness=fitness)
+
+        return updatedPopulation
+
+    def generation(self):
+        randomNum1 = np.tile(np.random.random(size=(self.pop_size, 1)), (1, self.dim))
+        randomNum2 = np.tile(np.random.random(size=(self.pop_size, 1)), (1, self.dim))
+
+        bestPos         = self.bestVector.iloc[:-1].copy()
+        currentPos      = self.population.iloc[:, :-1].copy()
+        previousBestPos = self.previousBest.iloc[:, :-1].copy()
+
+        # print("1\n", randomNum1)
+        # print("2\n", randomNum2)
+        # print("Best vector\n", self.bestVector)
+        # print("Current velocity: \n", self.velocity)
+        # print("Current pop: \n", self.population)
+        # print("Previous best pos: \n", self.previousBest)
+
+        localSearch  = randomNum1*(previousBestPos - currentPos)
+        globalSearch = randomNum2*(bestPos - currentPos)
+
+        # print(localSearch)
+        # print(globalSearch)
+        # Update velocity
+        self.velocity = self.w*self.velocity + self.c1*localSearch + self.c2*globalSearch
+
+        # Clip velocities to limits
+        self.velocity.clip(lower=self.vMin, upper=self.vMax, inplace=True)
+
+        # Update position
+        self.population.iloc[:, :-1] = self.population.iloc[:, :-1] + self.velocity
+        self.population = self.set_state(self.population.iloc[:, :-1])
+
+        # print("New velocity: \n", self.velocity)
+        # print("New pop: \n", self.population)
+
+        # Update best values
+        self.update_previous_best(self.population)
+        self.update_global_best()
+
+        return self.population
+
 
 class ParticleSwarmOptimization:
     def __init__(self, func_id, pop_size = 100, dim=10, max_iters=100):
@@ -43,8 +176,8 @@ class ParticleSwarmOptimization:
         self.psoProblem = {
                 'CostFunction': self.get_fitness,
                 'nVar': self.dim,
-                'VarMin': self.xMin,   # Alternatively you can use a "numpy array" with nVar elements, instead of scalar
-                'VarMax': self.xMax,   # Alternatively you can use a "numpy array" with nVar elements, instead of scalar
+                'xMin': self.xMin,   # Alternatively you can use a "numpy array" with nVar elements, instead of scalar
+                'xMax': self.xMax,   # Alternatively you can use a "numpy array" with nVar elements, instead of scalar
             }
 
     def get_fitness(self, vector):
@@ -60,7 +193,7 @@ class ParticleSwarmOptimization:
         return self.problem.fitness(vector)[0]
 
     def all_generations(self):
-        gbest, particlesGen = PSO(self.psoProblem, MaxIter = self.maxIters, PopSize = self.pop_size,
+        gbest, particlesGen = GOPSO(self.psoProblem, MaxIter = self.maxIters, popSize = self.pop_size,
                                     c1 = self.c1, c2 = self.c2, w = self.w, wdamp = self.wdamp)
 
         fitnessHist = np.empty((self.maxIters, self.pop_size))
