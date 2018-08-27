@@ -25,17 +25,11 @@ class ParticleSwarmOptimizationSimple:
         self.func_id      = func_id
         self.fitnessEvals = 0
 
-        # Debug settings
-        self.c1    = 1.0
-        self.c2    = 1.0
-        self.w     = 1.0
+        # GOPSO default
+        self.c1    = 1.49618
+        self.c2    = 1.49618
+        self.w     = 0.72984
         self.wdamp = 1.0
-
-        # # Yarpiz default
-        # self.c1    = 1.4962
-        # self.c2    = 1.4962
-        # self.w     = 0.7298
-        # self.wdamp = 1.0
 
         self.problem = pg.problem(pg.cec2014(prob_id=self.func_id, dim=self.dim))
 
@@ -103,8 +97,11 @@ class ParticleSwarmOptimizationSimple:
         updatedPopulation = pd.DataFrame(np.where(logicArray, randomArray, newPopulation))
 
         # Compute new Fitness
-        fitness = newPopulation.apply(self.get_fitness, axis=1).copy()
-        updatedPopulation = updatedPopulation.assign(Fitness=fitness)
+        if newPopSize > 1:
+            fitness = newPopulation.apply(self.get_fitness, axis=1).copy()
+            updatedPopulation = updatedPopulation.assign(Fitness=fitness)
+        else:
+            updatedPopulation = updatedPopulation.assign(Fitness=self.get_fitness(updatedPopulation))
 
         return updatedPopulation
 
@@ -116,18 +113,9 @@ class ParticleSwarmOptimizationSimple:
         currentPos      = self.population.iloc[:, :-1].copy()
         previousBestPos = self.previousBest.iloc[:, :-1].copy()
 
-        # print("1\n", randomNum1)
-        # print("2\n", randomNum2)
-        # print("Best vector\n", self.bestVector)
-        # print("Current velocity: \n", self.velocity)
-        # print("Current pop: \n", self.population)
-        # print("Previous best pos: \n", self.previousBest)
-
         localSearch  = randomNum1*(previousBestPos - currentPos)
         globalSearch = randomNum2*(bestPos - currentPos)
 
-        # print(localSearch)
-        # print(globalSearch)
         # Update velocity
         self.velocity = self.w*self.velocity + self.c1*localSearch + self.c2*globalSearch
 
@@ -138,13 +126,89 @@ class ParticleSwarmOptimizationSimple:
         self.population.iloc[:, :-1] = self.population.iloc[:, :-1] + self.velocity
         self.population = self.set_state(self.population.iloc[:, :-1])
 
-        # print("New velocity: \n", self.velocity)
-        # print("New pop: \n", self.population)
-
         # Update best values
         self.update_previous_best(self.population)
         self.update_global_best()
 
+        return self.population
+
+class GOParticleSwarmOptimizationSimple(ParticleSwarmOptimizationSimple):
+    def __init__(self, func_id, pop_size = 100, dim=10, max_iters=100):
+        # Call ancestor initialization
+        super().__init__(func_id, pop_size = pop_size, dim=dim, max_iters=max_iters)
+
+        # GOPSO default
+        self.c1        = 1.49618
+        self.c2        = 1.49618
+        self.w         = 0.72984
+        self.jump_rate = 0.3
+
+    def init_states(self):
+        randomPositions = np.random.random((self.pop_size, self.dim))*(self.xMax - self.xMin) + self.xMin
+
+        # Compute opposite population and concatenate with original population
+        initPopulation = pd.DataFrame(np.concatenate((randomPositions,
+                                                      opposite_number(randomPositions, self.xMin, self.xMax, k='random'))))
+        initPopulation  = self.set_state(initPopulation)
+
+        # Keep only the fittest from set [pop, opposite_pop]
+        self.population = initPopulation.sort_values("Fitness", ascending=True, inplace=False).iloc[:self.pop_size, :]
+        self.population = self.population.reset_index(drop=True)
+
+        self.velocity     = pd.DataFrame(np.zeros((self.pop_size, self.dim)))
+
+        # Update best positions and costs found per particle
+        self.previousBest = self.population.copy()
+
+        # Update Global best position and cost
+        self.update_global_best()
+        return self.population
+
+    def generation_jumping(self):
+        '''
+            Compute an opposite population to self.population and keep fittest specimens.
+            Limits are given by each variables minimum and maximum values, instead
+            of using the search space limits.
+        '''
+        # Create arrays containing min and max values per variable with same
+        # shape as self.population
+        infLimit = self.population.iloc[:, :-1].min(axis=0).values
+        supLimit = self.population.iloc[:, :-1].max(axis=0).values
+
+        # Reshape and tile arrays
+        infLimit = np.tile(infLimit[np.newaxis, :], (self.pop_size, 1))
+        supLimit = np.tile(supLimit[np.newaxis, :], (self.pop_size, 1))
+
+        oppositePop = opposite_number(self.population.iloc[:, :-1], infLimit, supLimit)
+        oppositePop = self.set_state(oppositePop, substitute='random')
+
+        expandedPopulation = pd.concat([oppositePop, self.population], axis=0, ignore_index=True)
+
+        # Keep only the fittest from set [pop, opposite_pop]
+        self.population = expandedPopulation.sort_values("Fitness", ascending=True, inplace=False).reset_index(drop=True)
+        self.population = self.population.iloc[:self.pop_size, :].reset_index(drop=True)
+
+        return self.population
+
+    def mutate_best_vector(self):
+        # Mutation with Cauchy Standard distribution
+        mutatedBestVector = self.bestVector.iloc[:-1] + np.random.standard_cauchy(size=self.dim)
+        mutatedBestVector = self.set_state(mutatedBestVector)
+
+        if mutatedBestVector["Fitness"] <= self.bestVector["Fitness"]:
+            self.bestVector = mutatedBestVector
+        return self.bestVector
+
+    def generation(self):
+        # Perform Generation jumping
+        if np.random.rand() < self.jump_rate:
+            self.generation_jumping()
+
+        # Standard PSO generation loop
+        super().generation()
+
+        # Mutate best vector
+        self.mutate_best_vector()
         return self.population
 
 
@@ -205,7 +269,6 @@ class ParticleSwarmOptimization:
         fitnessDf = pd.DataFrame(fitnessHist)
 
         return fitnessDf
-
 
 
 class DifferentialEvolutionSimple:

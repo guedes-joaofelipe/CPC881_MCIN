@@ -15,7 +15,8 @@ def opposite_number(x, infLim, supLim, k=1.0):
         Returns x_opposite
     '''
     if k == 'random':
-        k = np.random.random(size=np.shape(x))
+        k = np.random.random(size=(1,1))
+        k = np.tile(k, np.shape(x))
     x_opposite = k*(infLim + supLim) - x
     return x_opposite
 

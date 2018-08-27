@@ -9,7 +9,7 @@ from optimize   import optimize
 from utils      import make_tables
 from evolution  import (DifferentialEvolution, DifferentialEvolutionSimple,
                         OppositionDifferentialEvolution, OppositionDifferentialEvolutionSimple,
-                        ParticleSwarmOptimizationSimple)
+                        ParticleSwarmOptimizationSimple, GOParticleSwarmOptimizationSimple)
 import dirs
 
 
@@ -34,9 +34,9 @@ if __name__ == "__main__":
     # funcList = [2]
 
     # Problem and Evaluation parameters
-    algorithm   = ParticleSwarmOptimizationSimple
-    numRuns     = 10
-    popSize     = 20
+    algorithm   = GOParticleSwarmOptimizationSimple
+    numRuns     = 51
+    popSize     = 40
 
     successRate = 0
     targetError = 1e-8
@@ -52,7 +52,7 @@ if __name__ == "__main__":
     for dim in dimList:
         for funcId in funcList:
             # FILENAME
-            fileName = "TEST_SIMPLE_PSO_F_{}_runs{}_dim{}".format(funcId, numRuns, dim)
+            fileName = "TEST_GOPSO_F_{}_runs{}_dim{}".format(funcId, numRuns, dim)
 
             print("\nFunction {:2d}\n".format(funcId))
 
@@ -89,7 +89,7 @@ if __name__ == "__main__":
     print("\nElapsed time: {:.2f}s".format(elapsed))
 
     # After results are ready, format them into Excel tables
-    algList = ["ODE"]
+    algList = ["PSO"]
     for algorithm in algList:
         for dim in [10, 30]:
             make_tables(algorithm, dim, numRuns, targetError)
