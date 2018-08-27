@@ -52,7 +52,7 @@ if __name__ == "__main__":
     for dim in dimList:
         for funcId in funcList:
             # FILENAME
-            fileName = "TEST_GOPSO_F_{}_runs{}_dim{}".format(funcId, numRuns, dim)
+            fileName = "SIMPLE_PSO_F_{}_runs{}_dim{}".format(funcId, numRuns, dim)
 
             print("\nFunction {:2d}\n".format(funcId))
 

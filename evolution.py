@@ -25,6 +25,12 @@ class ParticleSwarmOptimizationSimple:
         self.func_id      = func_id
         self.fitnessEvals = 0
 
+        # # Debug
+        # self.c1    = 1.0
+        # self.c2    = 1.0
+        # self.w     = 1.0
+        # self.wdamp = 1.0
+
         # GOPSO default
         self.c1    = 1.49618
         self.c2    = 1.49618
@@ -65,7 +71,7 @@ class ParticleSwarmOptimizationSimple:
         # Keep track of best position found per particle
         # If new position's fitness is greater than current best's, keep current best
         # Else, store new fitness it as the new best
-        self.previousBest.where(population['Fitness'] >= self.previousBest['Fitness'], other=population)
+        self.previousBest = self.previousBest.where(population['Fitness'] >= self.previousBest['Fitness'], other=population)
         return self.previousBest
 
 
@@ -129,7 +135,7 @@ class ParticleSwarmOptimizationSimple:
         # Update best values
         self.update_previous_best(self.population)
         self.update_global_best()
-
+    
         return self.population
 
 class GOParticleSwarmOptimizationSimple(ParticleSwarmOptimizationSimple):
