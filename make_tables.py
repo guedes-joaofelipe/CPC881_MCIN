@@ -7,7 +7,7 @@ from utils      import load_data, make_tables
 import dirs
 
 targetError = 1e-8
-numRuns     = 50
+numRuns     = 51
 
 # Make all tables
 # algList = ["ES", "ESMod", "DE", "ODE", "PSO"]

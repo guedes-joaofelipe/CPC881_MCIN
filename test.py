@@ -18,7 +18,7 @@ func_id = 1
 
 # TEST EVOLUTION ALGS
 # alg = DifferentialEvolution(dim=dim, pop_size=popSize)
-alg = ParticleSwarmOptimizationSimple(func_id=1, dim=dim, pop_size=popSize)
+alg = GOParticleSwarmOptimizationSimple(func_id=1, dim=dim, pop_size=popSize)
 # print(alg.population.shape)
 print(alg.population)
 # alg.mutation(alg.mutation_rand_1)
@@ -34,8 +34,8 @@ print(alg.population)
 alg.generation()
 alg.generation()
 # # print(alg.mutatedPopulation)
-# print(alg.population)
-# # alg.generation()
+alg.generation()
+print(alg.population)
 # # # alg.crossover_binomial(alg.mutation())
 # print(alg.population)
 

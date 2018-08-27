@@ -76,7 +76,14 @@ class ParticleSwarmOptimizationSimple:
 
 
     def update_global_best(self):
-        self.bestVector = self.previousBest.sort_values("Fitness", ascending=True, inplace=False).reset_index(drop=True).iloc[0, :]
+        minIndex = self.previousBest["Fitness"].idxmin()
+
+        # Record best vector and expanded dimension
+        self.bestVector = self.previousBest.iloc[minIndex, :-1].values
+        self.bestVector = pd.DataFrame(np.expand_dims(self.bestVector, axis=0))
+
+        # Assign fitness column
+        self.bestVector["Fitness"] = self.previousBest.iloc[minIndex, -1]
         return self.bestVector
 
     def set_state(self, newPopulation, substitute='random'):
@@ -103,7 +110,7 @@ class ParticleSwarmOptimizationSimple:
         updatedPopulation = pd.DataFrame(np.where(logicArray, randomArray, newPopulation))
 
         # Compute new Fitness
-        if newPopSize > 1:
+        if (newPopSize > 1):
             fitness = newPopulation.apply(self.get_fitness, axis=1).copy()
             updatedPopulation = updatedPopulation.assign(Fitness=fitness)
         else:
@@ -115,7 +122,7 @@ class ParticleSwarmOptimizationSimple:
         randomNum1 = np.tile(np.random.random(size=(self.pop_size, 1)), (1, self.dim))
         randomNum2 = np.tile(np.random.random(size=(self.pop_size, 1)), (1, self.dim))
 
-        bestPos         = self.bestVector.iloc[:-1].copy()
+        bestPos         = self.bestVector.iloc[0, :-1].copy()
         currentPos      = self.population.iloc[:, :-1].copy()
         previousBestPos = self.previousBest.iloc[:, :-1].copy()
 
@@ -135,7 +142,7 @@ class ParticleSwarmOptimizationSimple:
         # Update best values
         self.update_previous_best(self.population)
         self.update_global_best()
-    
+
         return self.population
 
 class GOParticleSwarmOptimizationSimple(ParticleSwarmOptimizationSimple):
@@ -198,10 +205,13 @@ class GOParticleSwarmOptimizationSimple(ParticleSwarmOptimizationSimple):
 
     def mutate_best_vector(self):
         # Mutation with Cauchy Standard distribution
-        mutatedBestVector = self.bestVector.iloc[:-1] + np.random.standard_cauchy(size=self.dim)
+        # mutatedPos = np.array([(self.bestVector.iloc[:-1] + np.random.standard_cauchy(size=self.dim))])
+        mutatedPos = self.bestVector.iloc[0, :-1] + np.random.standard_cauchy(size=self.dim)
+
+        mutatedBestVector = pd.DataFrame(np.expand_dims(mutatedPos, axis=0))
         mutatedBestVector = self.set_state(mutatedBestVector)
 
-        if mutatedBestVector["Fitness"] <= self.bestVector["Fitness"]:
+        if mutatedBestVector.loc[0, "Fitness"] <= self.bestVector.loc[0, "Fitness"]:
             self.bestVector = mutatedBestVector
         return self.bestVector
 
