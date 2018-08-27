@@ -2,7 +2,9 @@ import numpy                as np
 import pandas               as pd
 import matplotlib.pyplot    as plt
 from mpl_toolkits.mplot3d   import Axes3D
+from tqdm                   import tqdm
 
+from utils import make_function_table
 import dirs
 import defs
 
@@ -47,33 +49,45 @@ def plot_3d(X, Y, Z, save=True, fig_name="Plot_3D", show=False):
 
     return fig, ax
 
-def plot_evolution(tablePath, save=False, fig_name="auto", show=True):
+def plot_evolution(paths, save=False, fig_name="Error evolution plot", show=True):
     '''
         Plot evolution of error over generations for given results table.
+
+        paths: List of results filepaths
     '''
     fig = plt.figure(figsize=(24, 18))
 
+    title = fig_name
 
-    title = "Evolution of mean error over FES number for DE on F1"
-    if fig_name == "auto":
-        fig_name = title
-
-    data = pd.read_excel(tablePath)
-    # print(data)
-    plt.semilogy(defs.fesScale, data["Mean"], 'k.', markersize='8', linestyle='-', linewidth='2', label='DE/best/1/bin')
-
-    plt.xlim([-0.01, 1.0])
+    # plt.xlim([-0.01, 1.01])
     # plt.ylim([0.0, 1.01])
-    plt.xlabel('Percentage of MaxFES',fontsize= 'large')
+    # plt.xlabel('Percentage of MaxFES',fontsize= 'large')
+    plt.xlabel('Generations',fontsize= 'large')
     plt.ylabel('Mean Error',fontsize= 'large')
     plt.title(title)
-    plt.legend(loc="upper right")
+    print(paths)
+
+    for path in tqdm(paths):
+        print("Processing Function")
+        fileName   = path.split("/")[-1].replace(".hdf", "")
+        folderName = path.split("/")[-2].replace(".hdf", "")
+
+        data = pd.read_hdf(path)
+        numRuns = data["Run"].max()
+        errorTable = make_function_table(data, numRuns)
+
+        index = np.array(errorTable["Mean"].index)
+        index = index/np.amax(index)
+
+        plt.loglog(index, errorTable["Mean"], markersize='8', linestyle='-',
+                        linewidth='2', label=folderName)
+        plt.legend(loc="upper right")
+
 
     if show is True:
         plt.show()
     if save is True:
-        fig.savefig(dirs.figures+fig_name+".png",
-                    orientation='portrait', bbox_inches='tight')
-
+        fig.savefig(dirs.evolution_plots+fig_name.replace(" ", "_")+".png",
+                        orientation='portrait', bbox_inches='tight')
 
     return fig

@@ -28,15 +28,15 @@ def aux_optim(algorithm, run_id=0, func_id=5, dim=2, pop_size=30, max_f_evals='a
 
 
 if __name__ == "__main__":
-    # dimList  = [10, 30]
-    dimList  = [30]
+    dimList  = [10, 30]
+    # dimList  = [30]
     funcList = [1, 2, 6, 7, 9, 14]   # Assignment function list
     # funcList = [2]
 
     # Problem and Evaluation parameters
-    algorithm   = GOParticleSwarmOptimizationSimple
+    algorithm   = DifferentialEvolutionSimple
     numRuns     = 51
-    popSize     = 40
+    popSize     = 50
 
     successRate = 0
     targetError = 1e-8

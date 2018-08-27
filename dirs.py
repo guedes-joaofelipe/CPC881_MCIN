@@ -1,8 +1,9 @@
 # Define project paths
-input   = "./input_data/"
-results = "./results/"
-tables  = "./tables/"
-figures = "../figures/"
+input           = "./input_data/"
+results         = "./results/"
+tables          = "./tables/"
+figures         = "../figures/"
+evolution_plots = figures+'evolution_plots/'
 
 import os
 
@@ -19,5 +20,10 @@ except OSError:
 
 try:
     os.makedirs(figures)
+except OSError:
+    pass
+
+try:
+    os.makedirs(evolution_plots)
 except OSError:
     pass

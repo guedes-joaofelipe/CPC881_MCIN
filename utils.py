@@ -20,6 +20,33 @@ def opposite_number(x, infLim, supLim, k=1.0):
     x_opposite = k*(infLim + supLim) - x
     return x_opposite
 
+def make_function_table(data, num_runs, scale='auto'):
+    if scale == 'auto':
+        scale = list(range(data.shape[0]))
+    scale = scale/np.amax(scale)
+
+    errorTable = pd.DataFrame()
+    for run in range(0, num_runs):
+        index = (data['Run'] == run)
+
+        subTable = pd.DataFrame(data.values[index, :-1])
+        generations = subTable.shape[0]
+
+        # Only include a pre-determined set of generations
+        fesIndex = (generations - 1)*np.array(scale)
+        fesIndex = fesIndex.round().astype(int)
+
+        # Get only the best individuals
+        subTable = subTable.min(axis=1, skipna=False)
+
+        # Append Run data to the table
+        errorTable['Run {:2d}'.format(run)] = subTable.iloc[fesIndex].values
+
+    # Add a column with each function's mean error over all runs
+    errorTable["Mean"] = errorTable.mean(axis=1, skipna=True)
+
+    return errorTable
+
 def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
     folder = dirs.results+algorithm+"/"
     folderList = glob(folder+"**/", recursive=True)
@@ -100,6 +127,7 @@ def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
 
             data = pd.read_hdf(file)
             errorTable = pd.DataFrame()
+            num_runs = data["Run"].max()
 
             # Get function number and store as Key
             try:
@@ -115,25 +143,8 @@ def make_tables(algorithm, dim, num_runs=50, target_error=1e-8):
             print("\n", key)
 
             # For each run, get evolution of best errors per generation
+            errorTable = make_function_table(data, num_runs, scale=defs.fesScale)
             errorTable = pd.DataFrame({'MaxFES': defs.fesScale}).set_index('MaxFES')
-            for run in range(0, num_runs):
-                index = (data['Run'] == run)
-
-                subTable = pd.DataFrame(data.values[index, :-1])
-                generations = subTable.shape[0]
-
-                # Only include a pre-determined set of generations
-                fesIndex = (generations - 1)*np.array(defs.fesScale)
-                fesIndex = fesIndex.round().astype(int)
-
-                # Get only the best individuals
-                subTable = subTable.min(axis=1, skipna=False)
-
-                # Append Run data to the table
-                errorTable['Run {:2d}'.format(run)] = subTable.iloc[fesIndex].values
-
-            # Add a column with each function's mean error over all runs
-            errorTable["Mean"] = errorTable.mean(axis=1, skipna=True)
 
             # Save as excel file
             if not(errorTable.empty):
