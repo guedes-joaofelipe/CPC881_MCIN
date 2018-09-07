@@ -1,5 +1,6 @@
 import numpy                as np
 import pandas               as pd
+import matplotlib
 import matplotlib.pyplot    as plt
 from mpl_toolkits.mplot3d   import Axes3D
 from tqdm                   import tqdm
@@ -55,21 +56,37 @@ def plot_evolution(paths, save=False, fig_name="Error evolution plot", show=True
 
         paths: List of results filepaths
     '''
-    fig = plt.figure(figsize=(24, 18))
+    fig = plt.figure(figsize=(28, 18))
+
+    SMALL_SIZE = 12
+    MEDIUM_SIZE = 12
+    BIGGER_SIZE = 16
+
+    # matplotlib.rc('font', size=SMALL_SIZE)          # controls default text sizes
+    matplotlib.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+    matplotlib.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+    matplotlib.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+    matplotlib.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+    matplotlib.rc('legend', fontsize=BIGGER_SIZE)    # legend fontsize
+    matplotlib.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
     title = fig_name
+    yMax = 1e11
+    yMin = 1e-8
 
-    # plt.xlim([-0.01, 1.01])
-    # plt.ylim([0.0, 1.01])
-    # plt.xlabel('Percentage of MaxFES',fontsize= 'large')
-    plt.xlabel('Generations',fontsize= 'large')
-    plt.ylabel('Mean Error',fontsize= 'large')
-    plt.title(title)
-    print(paths)
+    plt.xlim([0.0, 1.0])
+    # plt.ylim([yMin, yMax])
+    plt.xlabel('Percentage of MaxFES', fontsize= 'x-large')
+    # plt.xlabel('Generations', fontsize= 'x-large')
+    plt.ylabel('Mean Error', fontsize= 'x-large')
+    plt.title(title, fontsize= 'x-large')
+
+    for path in paths:
+        print(path)
 
     for path in tqdm(paths):
-        print("Processing Function")
-        fileName   = path.split("/")[-1].replace(".hdf", "")
+        print("\nProcessing File: {}\n".format(path))
+        # fileName   = path.split("/")[-1].replace(".hdf", "")
         folderName = path.split("/")[-2].replace(".hdf", "")
 
         data = pd.read_hdf(path)
@@ -79,10 +96,13 @@ def plot_evolution(paths, save=False, fig_name="Error evolution plot", show=True
         index = np.array(errorTable["Mean"].index)
         index = index/np.amax(index)
 
-        plt.loglog(index, errorTable["Mean"], markersize='8', linestyle='-',
+        plt.plot(index, errorTable["Mean"], markersize='8', linestyle='-',
                         linewidth='2', label=folderName)
-        plt.legend(loc="upper right")
 
+    # Plot a dashed line x = 1e-8
+    # line = np.ones(index.shape[0])*1e-8
+    # plt.semilogy(index, line, '--k', markersize='8', label='Target error')
+    plt.legend(loc="best")
 
     if show is True:
         plt.show()
