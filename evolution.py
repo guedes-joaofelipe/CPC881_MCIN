@@ -3,7 +3,7 @@ import pandas   as pd
 import pygmo    as pg
 from copy       import copy
 
-from utils      import opposite_number
+from utils      import getOppositeNumber
 from yarpiz     import PSO, GOPSO
 from population import Population
 
@@ -162,7 +162,7 @@ class GOParticleSwarmOptimizationSimple(ParticleSwarmOptimizationSimple):
 
         # Compute opposite population and concatenate with original population
         initPopulation = pd.DataFrame(np.concatenate((randomPositions,
-                                                      opposite_number(randomPositions, self.xMin, self.xMax, k='random'))))
+                                                      getOppositeNumber(randomPositions, self.xMin, self.xMax, k='random'))))
         initPopulation  = self.set_state(initPopulation)
 
         # Keep only the fittest from set [pop, opposite_pop]
@@ -193,7 +193,7 @@ class GOParticleSwarmOptimizationSimple(ParticleSwarmOptimizationSimple):
         infLimit = np.tile(infLimit[np.newaxis, :], (self.pop_size, 1))
         supLimit = np.tile(supLimit[np.newaxis, :], (self.pop_size, 1))
 
-        oppositePop = opposite_number(self.population.iloc[:, :-1], infLimit, supLimit)
+        oppositePop = getOppositeNumber(self.population.iloc[:, :-1], infLimit, supLimit)
         oppositePop = self.set_state(oppositePop, substitute='random')
 
         expandedPopulation = pd.concat([oppositePop, self.population], axis=0, ignore_index=True)
@@ -466,7 +466,7 @@ class OppositionDifferentialEvolutionSimple(DifferentialEvolutionSimple):
         pop = np.random.random((self.pop_size, self.dim))*(self.xMax - self.xMin) + self.xMin
 
         # Compute opposite population and concatenate with original population
-        initPopulation = pd.DataFrame(np.concatenate((pop, opposite_number(pop, self.xMin, self.xMax))))
+        initPopulation = pd.DataFrame(np.concatenate((pop, getOppositeNumber(pop, self.xMin, self.xMax))))
         initPopulation  = self.set_state(initPopulation, substitute='random')
 
         # Keep only the fittest from set [pop, opposite_pop]
@@ -489,7 +489,7 @@ class OppositionDifferentialEvolutionSimple(DifferentialEvolutionSimple):
         infLimit = np.tile(infLimit[np.newaxis, :], (self.pop_size, 1))
         supLimit = np.tile(supLimit[np.newaxis, :], (self.pop_size, 1))
 
-        oppositePop = opposite_number(self.population.iloc[:, :-1], infLimit, supLimit)
+        oppositePop = getOppositeNumber(self.population.iloc[:, :-1], infLimit, supLimit)
         oppositePop = self.set_state(oppositePop, substitute='random')
 
         expandedPopulation = pd.concat([oppositePop, self.population], axis=0, ignore_index=True)
@@ -543,8 +543,7 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
             self.problem = pg.problem(pg.cec2014(prob_id=self.func_id, dim=self.dim))
         else:
             raise NotImplementedError("f_{:2d} not yet implemented".format(self.func_id))
-            return -1
-
+            
         # Initialize population DataFrame and compute initial Fitness
         self.init_states()
 
@@ -569,6 +568,15 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         initPopulation = pd.DataFrame(specimen)
 
         self.population = self.set_state(initPopulation)
+
+        initPopulation  = self.set_state(initPopulation)
+
+        # Keep only the fittest from set [pop, opposite_pop]
+        self.population = initPopulation.sort_values("Fitness", ascending=True, inplace=False).iloc[:self.pop_size, :]
+        self.population = self.population.reset_index(drop=True)
+        return self.population.copy()
+
+
         self.generations += 1
         return self.population.copy()
     
@@ -634,18 +642,6 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
             input()
 
         return updatedPopulation.copy()
-
-    def get_fitness(self, specimen):
-        '''
-            Wrapper that returns fitness value for state input specimen and increments
-            number of fitness evaluations.
-
-            Argument: specimen. State vector of length (dim).
-
-            Returns : Fitness for given input state as evaluated by target function.
-        '''
-        self.fitnessEvals +=1
-        return self.problem.fitness(specimen)[0]
     
     def mutate_differential(self, indexes, method='best'):
         """
@@ -666,23 +662,27 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         
         result_vector = lambda_mutation*best_vector + (1-lambda_mutation)*base_vector
         
-        if len(self.param_F) != self.n_diff:
-            param_F = np.repeat(self.param_F[0], self.n_diff)
+        # Repeating param_F to contain number of diffs
+        param_F = np.repeat(self.param_F[0], self.n_diff) if len(self.param_F) != self.n_diff else self.param_F        
         
-        count = 1
-        for i in np.arange(self.n_diff):
+        count = 1        
+        for i in np.arange(self.n_diff):            
             random_vector1 = self.population.iloc[indexes[count], :-1]
             random_vector2 = self.population.iloc[indexes[count+1], :-1]
-            result_vector += self.param_F[i]*(random_vector1 - random_vector2)
+            result_vector += param_F[i]*(random_vector1 - random_vector2)
             count += 2
 
         return result_vector
     
     def mutate(self):
+        ''' For each specimenIndex in self.population, chooses randomly selected indexes 
+        from [0...pop_size-1] which are different from specimentIndex and applies 
+        self.mutate_differential to each Triplet        
+        '''
         def make_index_list(index):
             indexList = list(range(0, self.pop_size))
             indexList.remove(index)
-            return np.random.choice(indexList, size=3, replace=False)
+            return np.random.choice(indexList, size=1+2*self.n_diff, replace=False)
 
         # Create list of random indexes
         randomIndexes = np.array(list(map(make_index_list, list(range(0, self.pop_size)))))
@@ -693,22 +693,15 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         return self.mutatedPopulation
 
     def perform_crossover(self):
-        ''' DE binomial crossover. Compose a trial vector based on each mutated
-            vector and its corresponding parent. The new vector is composed following:
-
-                u_ij = v_ij,  if j == K or rand(0,1) <= cross_rate
-                       x_ij,  else
-
-            The trial vector will use the mutated value if probability is within
-            cross_rate or its columns is randomly selected by K = randint(0, dim).
-
+        ''' Performs binomial or exponential crossover. Compose a trial vector based on each mutated
+            vector and its corresponding parent. 
             Returns self.trialPopulation DataFrame with updated fitness column
         '''
         ## Crossover
         if self.crossover == 'exponential':
             # j: starting index 
-            L = np.random.geometric(.2, 1)
-            j = np.random.randint(0, len(v))            
+            L = np.random.geometric(self.prob_cr, 1)
+            j = np.random.randint(0, self.dim)            
             
             newPopulation = pd.DataFrame(                
                 np.where(np.isin(np.arange(self.dim), np.arange(j, j+L+1, 1)%self.dim),                         
@@ -737,13 +730,11 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
 
         # Compute new fitness values and treat exceptions
         self.trialPopulation = self.set_state(newPopulation)
-        
             
         return self.trialPopulation
 
     def select_survivor(self):
-        '''
-            DE survivor selection. A mutant vector is carried over to the next
+        ''' DE survivor selection. A mutant vector is carried over to the next
             generation if its fitness is better or equal than its parent's.
 
                 x_i(t+1) = u_i(t), if f(u_i(t)) <= f(x_i(t))
@@ -768,48 +759,26 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
     
 
 class OppositionDifferentialEvolution(DifferentialEvolution):
-    def __init__(self, dim=2, func_id=1, pop_size=100):
+    def __init__(self, dim=2, func_id=1, pop_size=100, crossover='binomial', prob_cr=.9, pop_corpus='real',
+        mutation='best', lambda_mutation=1, n_diff=1, F=[.8], substitute='random', jump_rate=.3):
         # Initialize superclass DifferentialEvolution
         self.xMin       = -100       # Search space limits
         self.xMax       =  100       #
         super().__init__(dim=dim, pop_size=pop_size)
 
-        # Parameters
-        self.param_F    = 0.5   # Mutation parameter F
-        self.cross_rate = 0.9   # Crossover probability
-        self.jump_rate  = 0.3   # Generation jumping probability
+        super().__init__(dim=dim, func_id=func_id, pop_size=pop_size, 
+                 crossover=crossover, prob_cr=prob_cr, pop_corpus=pop_corpus, 
+                 opposition=True, mutation=mutation, lambda_mutation=lambda_mutation, n_diff=n_diff, 
+                F=F, substitute=substitute)
 
-    def init_states(self):
-        '''
-            Randomly initialize states values following a uniform initialization
-            between limits xMax and xMin. Compute opposite population with opposite
-            state values. Initial population will be composed of best individuals
-            of set [population, opposite_population]
+        # Parameters        
+        self.jump_rate = jump_rate   # Generation jumping probability
 
-            self.population is a DataFrame with one row per individual, one column per
-            dimension and one extra for fitness values.
-
-            Arguments: None
-
-            Returns: self.population, a DataFrame with dimensions (population size)
-            by (dimension + 1).
-        '''
-        # Initialize population uniformly over search space and compute opposite population
-        pop = np.random.random((self.pop_size, self.dim))*(self.xMax - self.xMin) + self.xMin
-        oppositePop = opposite_number(pop, self.xMin, self.xMax)
-
-        initPopulation = pd.DataFrame(np.concatenate((pop, oppositePop)))
-
-        initPopulation  = self.set_state(initPopulation, substitute='random')
-
-        # Keep only the fittest from set [pop, opposite_pop]
-        self.population = initPopulation.sort_values("Fitness", ascending=True, inplace=False).iloc[:self.pop_size, :]
-        self.population = self.population.reset_index(drop=True)
-        return self.population.copy()
+    def __str__(self):
+        return "ODE/" + self.mutation + "/" + str(self.n_diff) + "/" + self.crossover[:3]
 
     def generation_jumping(self):
-        '''
-            Compute an opposite population to self.population and keep fittest specimens.
+        ''' Compute an opposite population to self.population and keep fittest specimens.
             Limits are given by each variables minimum and maximum values, instead
             of using the search space limits.
         '''
@@ -822,21 +791,21 @@ class OppositionDifferentialEvolution(DifferentialEvolution):
         infLimit = np.tile(infLimit[np.newaxis, :], (self.pop_size, 1))
         supLimit = np.tile(supLimit[np.newaxis, :], (self.pop_size, 1))
 
-        oppositePop = opposite_number(self.population.iloc[:, :-1], infLimit, supLimit)
-        oppositePop = self.set_state(oppositePop, substitute='random')
+        oppositePop = getOppositeNumber(self.population.iloc[:, :-1], infLimit, supLimit)
+        oppositePop = self.set_state(oppositePop)
 
         expandedPopulation = pd.concat([oppositePop, self.population], axis=0, ignore_index=True)
 
         # Keep only the fittest from set [pop, opposite_pop]
         self.population = expandedPopulation.sort_values("Fitness", ascending=True, inplace=False).reset_index(drop=True)
         self.population = self.population.iloc[:self.pop_size, :].reset_index(drop=True)
-
+        
         return self.population
 
     def generation(self):
-        self.mutation(self.mutation_rand_1)
-        self.crossover_binomial(self.mutatedPopulation)
-        self.survivor_selection(self.trialPopulation)
+        self.mutate()
+        self.crossover()
+        self.select_survivor()
 
         if np.random.random() <= self.jump_rate:
             # print("Gen JUMPED")
@@ -1067,7 +1036,6 @@ class EvolutionStrategyMod(EvolutionaryAlgorithm):
             self.problem = pg.problem(pg.cec2014(prob_id=self.func_id, dim=self.dim))
         else:
             raise ValueError("f_{:2d} not yet implemented".format(self.func_id))
-            return -1
 
         # Initialize population DataFrame and compute initial Fitness
         self.init_states()
@@ -1251,10 +1219,11 @@ class EvolutionStrategyMod(EvolutionaryAlgorithm):
 
 
 if __name__ == "__main__":
-    dim = 10
+    dim = 2
     func_id = 1
     pop_size = 100
-    generations = 100
+    maxGenerations = 1000
+    maxEvals = 1000
 
     crossover = 'binonial'
     mutation = 'best'
@@ -1262,20 +1231,25 @@ if __name__ == "__main__":
     lambda_mutation = .5
     opposition = True
 
-    de = DifferentialEvolution(dim=dim, func_id=func_id, pop_size=pop_size, crossover=crossover, 
-        opposition=opposition, mutation='mixed', lambda_mutation=.5)
+    # Differential Evolution
+    # alg = DifferentialEvolution(dim=dim, func_id=func_id, pop_size=pop_size, crossover=crossover, 
+    #     opposition=opposition, mutation='mixed', lambda_mutation=.5)
 
-    print ("Testing " + str(de))
-    print ("#Generations: ", de.generations)
-    print ("Mutation: ", de.mutation, 'Lambda', de.lambda_mutation, 'CR', de.crossover)
+    # Opposite Differential Evolution
+    alg = OppositionDifferentialEvolution(dim=dim, func_id=func_id, pop_size=pop_size, crossover=crossover, 
+        mutation='mixed', lambda_mutation=.5, jump_rate=.3, n_diff=1)
+
+    print ("Testing " + str(alg))
+    print ("#Generations: ", alg.generations)
+    print ("Mutation: ", alg.mutation, 'Lambda', alg.lambda_mutation, 'CR', alg.crossover)
     
     # print ("Initial population", de.population.head())
 
     while True:
-        de.generate()
-        if de.population['Fitness'].min() < 10e-8 or de.fitnessEvals > 10000*dim:
+        alg.generate()
+        if alg.fitnessEvals > maxEvals:
             break
 
-    print ("Lowest fitness {:.08}".format(de.population['Fitness'].min()))
-    print ("N evals: ", de.fitnessEvals)
-    print ("Final population\n", de.population.head())
+    print ("Lowest fitness {:.08}".format(alg.population['Fitness'].min()))
+    print ("N evals: ", alg.fitnessEvals)
+    print ("Final population\n", alg.population.head())

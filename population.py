@@ -1,4 +1,5 @@
 import numpy as np
+from utils import getOppositeNumber
 
 class Population:
 
@@ -48,7 +49,7 @@ class Population:
             population = np.random.randint(0, 2, size=(pop_size, self.dimension))
 
         if self.opposition:
-            oppositePopulation = self.getOppositeNumber(population, self.getLowerLimit(), self.getUpperLimit(), k=1)            
+            oppositePopulation = getOppositeNumber(population, self.getLowerLimit(), self.getUpperLimit(), k=1)            
             population = np.append(population, oppositePopulation, axis=0)
             if self.initialPopulation%2 == 1:
                 # Removing extra specimen due to append doubling
@@ -57,25 +58,7 @@ class Population:
 
         return population
 
-    def getOppositeNumber(self, x, infLim, supLim, k=1.0):
-        ''' Compute opposite number in relation to the n-dimensional real input x.
-            Input must be limited to [infLim, supLim] in every dimension.
-
-            Returns x_opposite
-        '''
-
-        x = np.array(x)
-        if np.logical_or(np.any(x < infLim), np.any(x > supLim)):
-            print ('Input array contains element outside limits')
-            raise EnvironmentError
-
-        if k == 'random':
-            k = np.random.random(size=(1,1))
-            k = np.tile(k, np.shape(x))
-        x_opposite = k*(infLim + supLim) - x
-        return x_opposite
-
-
+    
 if __name__ == "__main__":  
-    pop = Population(dimension=4, lowerLimit=-100, upperLimit=100, initialPopulation=4, method='real', opposition=False).create()
+    pop = Population(dimension=4, lowerLimit=-100, upperLimit=100, initialPopulation=4, method='real', opposition=True).create()
     print("Initial Population:\n", pop)

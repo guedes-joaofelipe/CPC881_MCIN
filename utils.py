@@ -7,13 +7,18 @@ from glob        import glob
 import dirs
 import defs
 
-def opposite_number(x, infLim, supLim, k=1.0):
-    '''
-        Compute opposite number in relation to the n-dimensional real input x.
+def getOppositeNumber(x, infLim, supLim, k=1.0):
+    ''' Compute opposite number in relation to the n-dimensional real input x.
         Input must be limited to [infLim, supLim] in every dimension.
 
         Returns x_opposite
     '''
+
+    x = np.array(x)
+    if np.logical_or(np.any(x < infLim), np.any(x > supLim)):
+        print ('Input array contains element outside limits')
+        raise EnvironmentError
+
     if k == 'random':
         k = np.random.random(size=(1,1))
         k = np.tile(k, np.shape(x))
