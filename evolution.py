@@ -5,6 +5,7 @@ from copy       import copy
 
 from utils      import opposite_number
 from yarpiz     import PSO, GOPSO
+from population import Population
 
 class EvolutionaryAlgorithm:
     def __init__(self, dim=2, pop_size=10):
@@ -227,7 +228,6 @@ class GOParticleSwarmOptimizationSimple(ParticleSwarmOptimizationSimple):
         self.mutate_best_vector()
         return self.population
 
-
 class ParticleSwarmOptimization:
     def __init__(self, func_id, pop_size = 100, dim=10, max_iters=100):
         self.dim        = dim
@@ -286,7 +286,6 @@ class ParticleSwarmOptimization:
 
         return fitnessDf
 
-
 class DifferentialEvolutionSimple:
     def __init__(self, dim=2, func_id=1, pop_size=30):
         # Initialize parameters
@@ -314,10 +313,8 @@ class DifferentialEvolutionSimple:
         self.population = self.set_state(pd.DataFrame(specimen)).copy()
         return self.population
 
-
     def get_fitness(self, specimen):
-        '''
-            Wrapper that returns fitness value for state input specimen and increments
+        ''' Wrapper that returns fitness value for state input specimen and increments
             number of fitness evaluations.
 
             Argument: specimen. State vector of length (dim).
@@ -352,39 +349,59 @@ class DifferentialEvolutionSimple:
 
         # Compute new Fitness
         fitness = newPopulation.apply(self.get_fitness, axis=1).copy()
+
+        # Assigning new column to dataframe
         updatedPopulation = updatedPopulation.assign(Fitness=fitness)
 
         return updatedPopulation
 
-    def mutation_best_1(self, indexes, bestVector):
-        '''
-            DE/best/1 mutation scheme
-            Every specimen produces a mutated/donor vector each generation.
+    # def mutation_best_1(self, indexes, bestVector):
+    #     '''
+    #         DE/best/1 mutation scheme
+    #         Every specimen produces a mutated/donor vector each generation.
 
-            Arguments:
-                index   : Target vector index.
-        '''
-        randomVector1 = self.population.iloc[indexes[1], :-1]
-        randomVector2 = self.population.iloc[indexes[2], :-1]
-        return bestVector + self.param_F*(randomVector1 - randomVector2)
+    #         Arguments:
+    #             index   : Target vector index.
+    #     '''
+    #     randomVector1 = self.population.iloc[indexes[1], :-1]
+    #     randomVector2 = self.population.iloc[indexes[2], :-1]
+    #     return bestVector + self.param_F*(randomVector1 - randomVector2)
 
-    def mutate_rand_1(self, indexes):
-        baseVector    = self.population.iloc[indexes[0], :-1]
-        randomVector1 = self.population.iloc[indexes[1], :-1]
-        randomVector2 = self.population.iloc[indexes[2], :-1]
-        return baseVector + self.param_F*(randomVector1 - randomVector2)
+    # def mutate_rand_1(self, indexes):
+    #     baseVector    = self.population.iloc[indexes[0], :-1]
+    #     randomVector1 = self.population.iloc[indexes[1], :-1]
+    #     randomVector2 = self.population.iloc[indexes[2], :-1]
+    #     return baseVector + self.param_F*(randomVector1 - randomVector2)
+
+    def mutate_differential(self, indexes, method='best', bestVector = None, n_diff=1):
+        """
+            method: ['best', 'rand']
+            n_diff: [1, 2, ...] (usually 1 or 2)
+        """
+        baseVector = self.population.iloc[indexes[0], :-1] if method == 'best' else bestVector
+        count = 1
+        for i in np.arange(n_diff):
+            randomVector1 = self.population.iloc[indexes[count], :-1]
+            randomVector2 = self.population.iloc[indexes[count+1], :-1]
+            baseVector += self.param_F*(randomVector1 - randomVector2)
+            count += 2
+
+        return baseVector
+
 
     def mutation(self, mutation_scheme):
         def make_index_list(index):
+            # Choosing 3 random index from [0..pop_size] which does not contain 'index'
             indexList = list(range(0, self.pop_size))
-            indexList.remove(index)
+            indexList.remove(index)            
             return np.random.choice(indexList, size=3, replace=False)
 
+        # Assigning array of random index list to each list
         randomNums = np.array(list(map(make_index_list,
                                           list(range(0, self.pop_size)))))
 
         if mutation_scheme == self.mutation_best_1:
-            bestVector    = self.population.iloc[self.population.idxmin(axis=0)[-1], :-1]
+            bestVector = self.population.iloc[self.population.idxmin(axis=0)[-1], :-1]
             self.mutatedPopulation = pd.DataFrame(np.apply_along_axis(mutation_scheme, 1,
                                                                       randomNums, bestVector))
         else:
@@ -493,7 +510,10 @@ class OppositionDifferentialEvolutionSimple(DifferentialEvolutionSimple):
 
 
 class DifferentialEvolution(EvolutionaryAlgorithm):
-    def __init__(self, dim=2, func_id=1, pop_size=30):
+    def __init__(self, dim=2, func_id=1, pop_size=30, 
+                 crossover = 'binomial', prob_cr = .9, pop_corpus = 'real', 
+                 opposition=False, mutation='best', lambda_mutation = 1, n_diff=1, 
+                F = [.8], substitute = 'random'):
         # Initialize superclass EvolutionaryAlgorithm
         super().__init__(dim=dim, pop_size=pop_size)
         self.xMin       = -100       # Search space limits
@@ -502,10 +522,22 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         self.func_id    = func_id
 
         # Parameters
-        self.param_F    = [0.8, 0.9]   # Mutation parameter F
-                                # CURRENTLY MUST BE A LIST OF CHOICES FOR F
-        self.cross_rate = 0.9   # Crossover probability
-
+        self.param_F    = F   # Mutation parameter F. If len(F) == n_diff, each F is applied 
+                            # differently to each diff mutation
+        self.prob_cr = prob_cr   # Crossover probability
+        self.opposition = opposition
+        self.pop_corpus = pop_corpus # ['real', 'integer', 'binary']
+        self.mutation = mutation # ['best', 'rand', 'mixed' ]
+        self.lambda_mutation = lambda_mutation # float in (0, 1)
+        self.n_diff = n_diff # [1, 2, 3, ...] (usually 1 or 2)
+        self.substitute = substitute # ['random', 'edge', 'none'] what to do to outside specimen
+        self.crossover = crossover
+        self.generations = 0
+        
+        self.population = None
+        self.trialPopulation = None
+        self.mutatedPopulation = None
+        
         # Fitness Function definition
         if self.func_id < 23:
             self.problem = pg.problem(pg.cec2014(prob_id=self.func_id, dim=self.dim))
@@ -516,9 +548,11 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         # Initialize population DataFrame and compute initial Fitness
         self.init_states()
 
+    def __str__(self):
+        return "DE/" + self.mutation + "/" + str(self.n_diff) + "/" + self.crossover[:3]
+        
     def init_states(self):
-        '''
-            Randomly initialize states and sigma values following a uniform initialization
+        ''' Randomly initialize states and sigma values following a uniform initialization
             between limits xMax and xMin. Assign state and fitness values to self.population.
 
             population is a DataFrame with one row per individual, one column per
@@ -528,16 +562,29 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
 
             Returns: self.population, DataFrame with dimensions (population size) by (dimension + 1).
         '''
-        specimen = np.random.random((self.pop_size, self.dim))*(self.xMax - self.xMin) + self.xMin
-
+        
+        specimen = Population(dimension=self.dim, lowerLimit=self.xMin, upperLimit=self.xMax, 
+                       initialPopulation=self.pop_size, method=self.pop_corpus, opposition=self.opposition).create()
+        
         initPopulation = pd.DataFrame(specimen)
 
-        self.population = self.set_state(initPopulation, substitute='random')
+        self.population = self.set_state(initPopulation)
+        self.generations += 1
         return self.population.copy()
+    
+    def get_fitness(self, specimen):
+        ''' Wrapper that returns fitness value for state input specimen and increments
+            number of fitness evaluations.
 
-    def set_state(self, newPopulation, substitute='random'):
+            Argument: specimen. State vector of length (dim).
+
+            Returns : Fitness for given input state as evaluated by target function.
         '''
-            Function to attribute new values to a population DataFrame.
+        self.fitnessEvals +=1        
+        return self.problem.fitness(specimen)[0]
+    
+    def set_state(self, newPopulation):
+        ''' Function to attribute new values to a population DataFrame.
             Guarantees correct fitness values for each state update.
             Includes specimen viability evaluation and treatment.
 
@@ -562,16 +609,21 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         # Select Exception treatment type
         choices = {
             'random':
-                pd.DataFrame(np.where(logicArray, np.random.random((self.pop_size, self.dim))*(self.xMax - self.xMin) + self.xMin, newPopulation)),
+                pd.DataFrame(np.where(logicArray, 
+                                      Population(dimension=self.dim, lowerLimit=self.xMin, 
+                                                 upperLimit=self.xMax, initialPopulation=self.pop_size, 
+                                                 method=self.pop_corpus, opposition=self.opposition).create(),
+                                      newPopulation
+                                     )),
             'none':
                 pd.DataFrame(np.where(logicArray, np.NaN, newPopulation)),
             'edge':
-                newPopulation.clip_lower(self.xMin).clip_upper(self.xMax)
+                newPopulation.clip(lower=self.xMin).clip(upper=self.xMax)
         }
-        updatedPopulation = choices.get(substitute, KeyError("Please select a valid substitute key")).copy()
+        updatedPopulation = choices.get(self.substitute, KeyError("Please select a valid substitute key")).copy()
 
         # Compute new Fitness
-        fitness = newPopulation.apply(self.get_fitness, axis=1).copy()
+        fitness = updatedPopulation.apply(self.get_fitness, axis=1).copy()
         updatedPopulation = updatedPopulation.assign(Fitness=fitness)
 
         # Check if there is any NaN or None value in the population
@@ -594,54 +646,54 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         '''
         self.fitnessEvals +=1
         return self.problem.fitness(specimen)[0]
+    
+    def mutate_differential(self, indexes, method='best'):
+        """
+            method: ['best', 'rand', 'mixed']
+            n_diff: [1, 2, ...] (usually 1 or 2)
+            u = lambda*best + (1-lambda)*rand + F*(x_1-x_2) + F*(x3-x4) + ...
+        """
+        
+        best_vector = self.population.iloc[self.population.idxmin(axis=0)['Fitness'], :-1]
+        base_vector = self.population.iloc[indexes[0], :-1] 
+        
+        if self.mutation == 'rand':
+            lambda_mutation = 0
+        elif self.mutation == 'best':
+            lambda_mutation = 1
+        else:
+            lambda_mutation = self.lambda_mutation
+        
+        result_vector = lambda_mutation*best_vector + (1-lambda_mutation)*base_vector
+        
+        if len(self.param_F) != self.n_diff:
+            param_F = np.repeat(self.param_F[0], self.n_diff)
+        
+        count = 1
+        for i in np.arange(self.n_diff):
+            random_vector1 = self.population.iloc[indexes[count], :-1]
+            random_vector2 = self.population.iloc[indexes[count+1], :-1]
+            result_vector += self.param_F[i]*(random_vector1 - random_vector2)
+            count += 2
 
-    def mutation_best_1(self, indexes):
-        '''
-            DE/best/1 mutation scheme
-            Every specimen produces a mutated/donor vector each generation.
-
-            Arguments:
-                index   : Target vector index.
-        '''
-        bestVector    = self.population.iloc[self.population.idxmin(axis=0)[-1], :-1]
-        randomVector1 = self.population.iloc[indexes[1], :-1]
-        randomVector2 = self.population.iloc[indexes[2], :-1]
-        return bestVector + self.param_F*(randomVector1 - randomVector2)
-
-    def mutation_rand_1(self, indexes):
-        '''
-            DE/rand/1 mutation scheme
-            Every baseSpecimen produces a mutated/donor vector each generation.
-
-            Arguments:
-                baseSpecimen, index are mantained for compatibility.
-                param_F: F parameter. Must be a positive real number.
-        '''
-        baseVector    = self.population.iloc[indexes[0], :-1]
-        randomVector1 = self.population.iloc[indexes[1], :-1]
-        randomVector2 = self.population.iloc[indexes[2], :-1]
-        return baseVector + self.param_F*(randomVector1 - randomVector2)
-
-    def mutation(self, mutation_scheme):
+        return result_vector
+    
+    def mutate(self):
         def make_index_list(index):
             indexList = list(range(0, self.pop_size))
             indexList.remove(index)
             return np.random.choice(indexList, size=3, replace=False)
 
-        # # Choose F from a list defined by self.param_f
-        # listParamF = np.random.choice(self.param_F, size=self.pop_size, replace=True)
-
         # Create list of random indexes
         randomIndexes = np.array(list(map(make_index_list, list(range(0, self.pop_size)))))
 
-        # Mutate every specimen using scheme passed to mutationScheme
-        self.mutatedPopulation = pd.DataFrame(np.apply_along_axis(mutation_scheme, 1, randomIndexes))
+        # Mutate every specimen using scheme passed to mutationScheme        
+        self.mutatedPopulation = pd.DataFrame(np.apply_along_axis(self.mutate_differential, axis=1, arr=randomIndexes))
 
         return self.mutatedPopulation
 
-    def crossover_binomial(self):
-        '''
-            DE binomial crossover. Compose a trial vector based on each mutated
+    def perform_crossover(self):
+        ''' DE binomial crossover. Compose a trial vector based on each mutated
             vector and its corresponding parent. The new vector is composed following:
 
                 u_ij = v_ij,  if j == K or rand(0,1) <= cross_rate
@@ -653,30 +705,43 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
             Returns self.trialPopulation DataFrame with updated fitness column
         '''
         ## Crossover
-        # randomArray: Roll probability for each dimension of every specimen
-        # randomK:     Sample one random integer K from [0, dim] for each specimen
-        # maskArray:   Mask array for logical comparisons
-        randomArray = np.random.rand(self.pop_size, self.dim)
-        randomK     = np.random.randint(0, self.dim, size=self.pop_size)
-        maskArray   = np.arange(self.dim)
+        if self.crossover == 'exponential':
+            # j: starting index 
+            L = np.random.geometric(.2, 1)
+            j = np.random.randint(0, len(v))            
+            
+            newPopulation = pd.DataFrame(                
+                np.where(np.isin(np.arange(self.dim), np.arange(j, j+L+1, 1)%self.dim),                         
+                self.mutatedPopulation, 
+                self.population.iloc[:, :-1])
+            ) 
 
-        # Reshape and tile arrays
-        randomK       = np.tile(randomK[:, np.newaxis], (1, self.dim))
-        maskArray     = np.tile(maskArray[np.newaxis, :], (self.pop_size, 1))
+        else: # if self.crossover == 'binomial':
+            # randomArray: Roll probability for each dimension of every specimen
+            # randomK:     Sample one random integer K from [0, dim] for each specimen
+            # maskArray:   Mask array for logical comparisons
+            randomArray = np.random.rand(self.pop_size, self.dim)
+            randomK     = np.random.randint(0, self.dim, size=self.pop_size)
+            maskArray   = np.arange(self.dim)
 
-        # Substitute mutatedPopulation values if
-        #   (randomArray <= cross_rate) OR (randomK == column)
-        #   In other words, Keep old values only if (randomArray > cross_rate) AND (randomK != column)                                   other=self.mutatedPopulation)
-        newPopulation = pd.DataFrame(np.where(np.logical_or(np.less_equal(randomArray, self.cross_rate),
-                                                             np.equal(randomK, maskArray)),
-                                              self.mutatedPopulation, self.population.iloc[:, :-1]))
+            # Reshape and tile arrays
+            randomK       = np.tile(randomK[:, np.newaxis], (1, self.dim))
+            maskArray     = np.tile(maskArray[np.newaxis, :], (self.pop_size, 1))
+
+            # Substitute mutatedPopulation values if
+            #   (randomArray <= cross_rate) OR (randomK == column)
+            #   In other words, Keep old values only if (randomArray > cross_rate) AND (randomK != column)                                   other=self.mutatedPopulation)
+            newPopulation = pd.DataFrame(np.where(np.logical_or(np.less_equal(randomArray, self.prob_cr),
+                                                                 np.equal(randomK, maskArray)),
+                                                  self.mutatedPopulation, self.population.iloc[:, :-1]))
 
         # Compute new fitness values and treat exceptions
-        self.trialPopulation = self.set_state(newPopulation, substitute='random')
-
+        self.trialPopulation = self.set_state(newPopulation)
+        
+            
         return self.trialPopulation
 
-    def survivor_selection(self):
+    def select_survivor(self):
         '''
             DE survivor selection. A mutant vector is carried over to the next
             generation if its fitness is better or equal than its parent's.
@@ -686,7 +751,6 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
 
             Returns updated self.population DataFrame
         '''
-
         # Selection: compare Fitness of Trial and Donor vectors. Substitute for new
         # values only if fitness decreases
         self.population = self.population.where(self.population["Fitness"] < self.trialPopulation["Fitness"],
@@ -694,12 +758,14 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
 
         return self.population
 
-    def generation(self):
-        self.mutation(self.mutation_rand_1)
-        self.crossover_binomial()
-        self.survivor_selection()
-
+    def generate(self):        
+        self.mutate()
+        self.perform_crossover()
+        self.select_survivor()
+        self.generations += 1
+        
         return self.population
+    
 
 class OppositionDifferentialEvolution(DifferentialEvolution):
     def __init__(self, dim=2, func_id=1, pop_size=100):
@@ -1185,4 +1251,31 @@ class EvolutionStrategyMod(EvolutionaryAlgorithm):
 
 
 if __name__ == "__main__":
-    pass
+    dim = 10
+    func_id = 1
+    pop_size = 100
+    generations = 100
+
+    crossover = 'binonial'
+    mutation = 'best'
+
+    lambda_mutation = .5
+    opposition = True
+
+    de = DifferentialEvolution(dim=dim, func_id=func_id, pop_size=pop_size, crossover=crossover, 
+        opposition=opposition, mutation='mixed', lambda_mutation=.5)
+
+    print ("Testing " + str(de))
+    print ("#Generations: ", de.generations)
+    print ("Mutation: ", de.mutation, 'Lambda', de.lambda_mutation, 'CR', de.crossover)
+    
+    # print ("Initial population", de.population.head())
+
+    while True:
+        de.generate()
+        if de.population['Fitness'].min() < 10e-8 or de.fitnessEvals > 10000*dim:
+            break
+
+    print ("Lowest fitness {:.08}".format(de.population['Fitness'].min()))
+    print ("N evals: ", de.fitnessEvals)
+    print ("Final population\n", de.population.head())

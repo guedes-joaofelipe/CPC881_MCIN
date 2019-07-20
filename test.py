@@ -17,12 +17,12 @@ popSize = 5
 func_id = 1
 
 # TEST EVOLUTION ALGS
-# alg = GOParticleSwarmOptimizationSimple(func_id=1, dim=dim, pop_size=popSize)
-# print(alg.population)
-#
-# alg.generation()
-# alg.generation()
-# print(alg.population)
+alg = DifferentialEvolution(func_id=1, dim=dim, pop_size=popSize)
+print(alg.population)
+
+alg.generation()
+alg.generation()
+print(alg.population)
 
 ## TEST PLOT FUNCTIONS
 # tablePath = dirs.tables+"DE/"+"DE_table2_F14_dim10.xlsx"
