@@ -2,9 +2,7 @@ import time
 import numpy    as np
 import pandas   as pd
 from tqdm       import tqdm
-
-from optimize   import optimize
-from evolution  import EvolutionStrategyMod
+from evolution  import DifferentialEvolution
 import dirs
 
 if __name__ == "__main__":

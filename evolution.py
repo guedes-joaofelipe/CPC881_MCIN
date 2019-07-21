@@ -1,9 +1,11 @@
 import numpy    as np
 import pandas   as pd
 import pygmo    as pg
+
+from sklearn.cluster import KMeans
 from copy       import copy
 
-from utils      import getOppositeNumber
+from utils      import getOppositeNumber, get_solution
 from yarpiz     import PSO, GOPSO
 from population import Population
 
@@ -511,9 +513,9 @@ class OppositionDifferentialEvolutionSimple(DifferentialEvolutionSimple):
 
 class DifferentialEvolution(EvolutionaryAlgorithm):
     def __init__(self, dim=2, func_id=1, pop_size=30, 
-                 crossover = 'binomial', prob_cr = .9, pop_corpus = 'real', 
-                 opposition=False, mutation='best', lambda_mutation = 1, n_diff=1, 
-                F = [.8], substitute = 'random'):
+                 crossover = 'binomial', prob_cr=.9, pop_corpus='real', 
+                 opposition=False, mutation='best', lambda_mutation=1, n_diff=1, 
+                F = [.8], substitute = 'random', fitness_clusters=None):
         # Initialize superclass EvolutionaryAlgorithm
         super().__init__(dim=dim, pop_size=pop_size)
         self.xMin       = -100       # Search space limits
@@ -533,7 +535,8 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         self.substitute = substitute # ['random', 'edge', 'none'] what to do to outside specimen
         self.crossover = crossover
         self.generations = 0
-        
+        self.fitness_clusters = fitness_clusters # (int or None) whether to calculate fitness only to population kmeans center
+        self.maxFitnessEvals = None
         self.population = None
         self.trialPopulation = None
         self.mutatedPopulation = None
@@ -630,8 +633,28 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         }
         updatedPopulation = choices.get(self.substitute, KeyError("Please select a valid substitute key")).copy()
 
-        # Compute new Fitness
-        fitness = updatedPopulation.apply(self.get_fitness, axis=1).copy()
+        # Compute new Fitness        
+        if self.fitness_clusters is not None and self.maxFitnessEvals is not None and self.fitnessEvals + self.pop_size > self.maxFitnessEvals:
+            # If self.fitness_clusters > 0, then the updated generation is clustered and we only make evaluations for the cluster's 
+            # center. The final fitness for each specimen is the fitness of its corresponding cluster center
+            kmeans = KMeans(n_clusters=self.fitness_clusters, n_jobs=-1, verbose=False)
+
+            # Fitting kmeans with population
+            kmeans.fit(updatedPopulation)
+
+            # Getting cluster for each specimen 
+            df_clusters = pd.DataFrame(kmeans.labels_, columns=['index'])
+
+            # Finding cluster center fitness
+            cluster_fitness = pd.DataFrame(kmeans.cluster_centers_).apply(self.get_fitness, axis=1).copy()
+            df_fitness = pd.DataFrame(cluster_fitness, columns=['Fitness'])
+            df_fitness.reset_index(drop = False, inplace=True)
+
+            # Mapping each specimen to the cluster's center fitness
+            fitness = pd.merge(df_clusters, df_fitness, on='index', how='inner')['Fitness']
+        else:
+            fitness = updatedPopulation.apply(self.get_fitness, axis=1).copy()
+
         updatedPopulation = updatedPopulation.assign(Fitness=fitness)
 
         # Check if there is any NaN or None value in the population
@@ -757,6 +780,61 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         
         return self.population
     
+    def optimize(self, target, max_f_evals='auto', max_generations=None, target_error=10e-8, verbose=True):
+        """
+            returns errorHist and fitnessHist which are (self.generations, self.pop_size)
+        
+        """
+        if max_f_evals == 'auto':
+            max_f_evals = 10000*self.dim
+
+        if max_f_evals is not None:
+            self.setMaxFitnessEvals(max_f_evals)
+
+        # Initialize variables
+        fitnessHist = pd.DataFrame()
+        errorHist = pd.DataFrame()        
+        
+        while True:        
+            # Stop Conditions
+            if (max_f_evals is not None and self.fitnessEvals + self.generations > max_f_evals):
+                if (self.fitness_clusters is None):
+                    break
+                elif (self.fitnessEvals + self.fitness_clusters > max_f_evals):
+                    break
+                
+            # Setting next generation
+            self.generate()
+
+            # Save error and fitness history
+            fitnessHist = fitnessHist.append(self.population["Fitness"])              
+            errorHist   = fitnessHist.copy() - target
+            errorHist   = errorHist.apply(np.abs).reset_index(drop=True)
+
+            bestError   = errorHist.iloc[-1,:].min()
+            
+            if (self.fitnessEvals > max_f_evals) or (bestError <= target_error) or (max_generations is not None and self.generations > max_generations):
+                break            
+
+        fitnessHist.reset_index(drop=True, inplace=True)
+        fitnessHist.index.name = 'generation' 
+        errorHist.index.name = 'generation'
+
+        # Mean and Best fitness values of last generation
+        lastMeanFit = fitnessHist.iloc[self.generations-1, :].mean()
+        lastBestFit = fitnessHist.iloc[self.generations-1, :].min()
+
+        if verbose is True:
+            print("\n#Generations:\t{}".format(self.generations))
+            print("#FitnessEvals:\t{}".format(self.fitnessEvals))
+            print("Mean Fitness:\t{:.4f}".format(lastMeanFit))
+            print("Best Fitness:\t{:.4f}\nSolution:\t{:.4f}\nDiff:\t\t{:.4f}".format(lastBestFit, target, abs(target-lastMeanFit)))
+
+        return errorHist, fitnessHist
+
+    def setMaxFitnessEvals(self, maxFitnessEvals):
+        self.maxFitnessEvals = maxFitnessEvals
+
 
 class OppositionDifferentialEvolution(DifferentialEvolution):
     def __init__(self, dim=2, func_id=1, pop_size=100, crossover='binomial', prob_cr=.9, pop_corpus='real',
@@ -1219,37 +1297,33 @@ class EvolutionStrategyMod(EvolutionaryAlgorithm):
 
 
 if __name__ == "__main__":
-    dim = 2
+    dim = 10
     func_id = 1
-    pop_size = 100
+    pop_size = 300
     maxGenerations = 1000
-    maxEvals = 1000
-
+    maxEvals = 'auto'
+    fitness_clusters = 30
     crossover = 'binonial'
     mutation = 'best'
-
     lambda_mutation = .5
-    opposition = True
+    opposition = False
+    solution = get_solution(func_id, dim)
 
     # Differential Evolution
-    # alg = DifferentialEvolution(dim=dim, func_id=func_id, pop_size=pop_size, crossover=crossover, 
-    #     opposition=opposition, mutation='mixed', lambda_mutation=.5)
+    alg = DifferentialEvolution(dim=dim, func_id=func_id, pop_size=pop_size, crossover=crossover, 
+        opposition=opposition, mutation='mixed', lambda_mutation=.5, fitness_clusters=fitness_clusters)
 
     # Opposite Differential Evolution
-    alg = OppositionDifferentialEvolution(dim=dim, func_id=func_id, pop_size=pop_size, crossover=crossover, 
-        mutation='mixed', lambda_mutation=.5, jump_rate=.3, n_diff=1)
+    # alg = OppositionDifferentialEvolution(dim=dim, func_id=func_id, pop_size=pop_size, crossover=crossover, 
+    #     mutation='mixed', lambda_mutation=.5, jump_rate=.3, n_diff=1)
 
-    print ("Testing " + str(alg))
-    print ("#Generations: ", alg.generations)
+    print ("Testing " + str(alg))    
     print ("Mutation: ", alg.mutation, 'Lambda', alg.lambda_mutation, 'CR', alg.crossover)
     
     # print ("Initial population", de.population.head())
 
-    while True:
-        alg.generate()
-        if alg.fitnessEvals > maxEvals:
-            break
+    errorHist, fitnessHist = alg.optimize(target=solution, max_f_evals=maxEvals)
 
-    print ("Lowest fitness {:.08}".format(alg.population['Fitness'].min()))
-    print ("N evals: ", alg.fitnessEvals)
+    print ("Fitness shape", fitnessHist.shape)
+    print ("ErrorHist shape", errorHist.shape)    
     print ("Final population\n", alg.population.head())
