@@ -183,7 +183,7 @@ def get_solution(func_id=1, dim=10, input_data_filepath=None):
     if func_id < 23:
         prob = pg.problem(pg.cec2014(prob_id=func_id, dim=dim))
         filepath = dirs.input if input_data_filepath is None else input_data_filepath
-        shift_data = np.loadtxt(os.path.join(filepath, "shift_data_{}.txt".format(func_id)))
+        shift_data = np.loadtxt(filepath + "/shift_data_{}.txt".format(func_id))
 
         # solution[func_id] = prob.fitness(shift_data[:dim])[0]
         solution = prob.fitness(shift_data[:dim])[0]
@@ -218,6 +218,10 @@ def load_data(path):
     newData = data.drop('Run', axis=1).min(axis=1)
     newData = pd.DataFrame(data={key: newData, 'Run': data['Run']})
     return newData
+
+def write_log(filepath, mode="a+", text = '\n'):
+    with open(filepath, mode) as f:
+        f.write(text)
 
 class ProgressBar:
     def __init__(self, bar_length = 10, bar_fill = '#', elapsed_time=False):                

@@ -533,7 +533,7 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         self.lambda_mutation = lambda_mutation # float in (0, 1)
         self.n_diff = n_diff # [1, 2, 3, ...] (usually 1 or 2)
         self.substitute = substitute # ['random', 'edge', 'none'] what to do to outside specimen
-        self.crossover = crossover
+        self.crossover = crossover # ['bin', 'exp']
         self.generations = 0
         self.fitness_clusters = fitness_clusters # (int or None) whether to calculate fitness only to population kmeans center
         self.maxFitnessEvals = None
@@ -721,7 +721,7 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
             Returns self.trialPopulation DataFrame with updated fitness column
         '''
         ## Crossover
-        if self.crossover == 'exponential':
+        if self.crossover == 'exp':
             # j: starting index 
             L = np.random.geometric(self.prob_cr, 1)
             j = np.random.randint(0, self.dim)            
@@ -732,7 +732,7 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
                 self.population.iloc[:, :-1])
             ) 
 
-        else: # if self.crossover == 'binomial':
+        else: # if self.crossover == 'bin':
             # randomArray: Roll probability for each dimension of every specimen
             # randomK:     Sample one random integer K from [0, dim] for each specimen
             # maskArray:   Mask array for logical comparisons
@@ -799,8 +799,10 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
             # Stop Conditions
             if (max_f_evals is not None and self.fitnessEvals + self.generations > max_f_evals):
                 if (self.fitness_clusters is None):
+                    print ('Optimization ended due to max fitness evals (max = {}, curr = {})'.format(self.maxFitnessEvals, self.fitnessEvals))
                     break
                 elif (self.fitnessEvals + self.fitness_clusters > max_f_evals):
+                    print ('Clustered Optimization ended due to max fitness evals (max = {}, curr = {})'.format(self.max_f_evals, self.fitnessEvals))
                     break
                 
             # Setting next generation
@@ -828,7 +830,7 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
             print("\n#Generations:\t{}".format(self.generations))
             print("#FitnessEvals:\t{}".format(self.fitnessEvals))
             print("Mean Fitness:\t{:.4f}".format(lastMeanFit))
-            print("Best Fitness:\t{:.4f}\nSolution:\t{:.4f}\nDiff:\t\t{:.4f}".format(lastBestFit, target, abs(target-lastMeanFit)))
+            print("Best Fitness:\t{:.4f}\nSolution:\t{:.4f}\nDiff:\t\t{:.4f}".format(lastBestFit, target, abs(target-lastBestFit)))
 
         return errorHist, fitnessHist
 
