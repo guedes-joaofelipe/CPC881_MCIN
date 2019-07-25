@@ -10,11 +10,160 @@ from yarpiz     import PSO, GOPSO
 from population import Population
 
 class EvolutionaryAlgorithm:
-    def __init__(self, dim=2, pop_size=10):
+    def __init__(self, dim=2, func_id=1, pop_size=10, prob_mutation=None, mutation=None, 
+        prob_cr=None, crossover=None, pop_corpus='real', opposition=False, substitute='random', 
+        fitness_clusters=None):
+
         self.dim            = dim
+        self.func_id        = func_id
         self.pop_size       = pop_size
+        self.prob_mutation  = prob_mutation
+        self.mutation       = mutation
+        self.prob_cr        = prob_cr
+        self.crossover      = crossover
+        self.pop_corpus     = pop_corpus # ['real', 'integer', 'binary']
+        self.opposition     = opposition # [True, False]
+        self.substitute     = substitute # ['random', 'edge', 'none'] what to do to outside specimen
+        self.fitness_clusters = fitness_clusters # (int or None) whether to calculate fitness only to population kmeans center        
 
         self.fitnessEvals   = 0
+        self.maxFitnessEvals = None
+        self.generations    = 0
+        self.xMin           = -100       # Search space limits
+        self.xMax           =  100       #
+        self.population     = None        
+        self.fitness_clusters = None
+
+        # Fitness Function definition
+        if self.func_id < 23:
+            self.problem = pg.problem(pg.cec2014(prob_id=self.func_id, dim=self.dim))
+        else:
+            raise NotImplementedError("f_{:2d} not yet implemented".format(self.func_id))
+            
+        # Initialize population DataFrame and compute initial Fitness
+        self.init_states()
+
+    def setMaxFitnessEvals(self, maxFitnessEvals):
+        self.maxFitnessEvals = maxFitnessEvals
+
+    def init_states(self):
+        ''' Randomly initialize states and sigma values following a uniform initialization
+            between limits xMax and xMin. Assign state and fitness values to self.population.
+
+            population is a DataFrame with one row per individual, one column per
+            dimension and one extra for fitness values.
+
+            Arguments: None
+
+            Returns: self.population, DataFrame with dimensions (population size) by (dimension + 1).
+        '''
+        
+        specimen = Population(dimension=self.dim, lowerLimit=self.xMin, upperLimit=self.xMax, 
+                       initialPopulation=self.pop_size, method=self.pop_corpus, opposition=self.opposition).create()
+        
+        initPopulation = pd.DataFrame(specimen)
+
+        # self.population = self.set_state(initPopulation)
+        initPopulation  = self.set_state(initPopulation)
+
+        # Keep only the fittest from set [pop, opposite_pop]
+        self.population = initPopulation.sort_values("Fitness", ascending=True, inplace=False).iloc[:self.pop_size, :]
+        self.population = self.population.reset_index(drop=True)
+        return self.population.copy()
+
+    def get_fitness(self, specimen):
+        ''' Wrapper that returns fitness value for state input specimen and increments
+            number of fitness evaluations.
+
+            Argument: specimen. State vector of length (dim).
+
+            Returns : Fitness for given input state as evaluated by target function.
+        '''
+        self.fitnessEvals +=1        
+        return self.problem.fitness(specimen)[0]
+    
+    def set_state(self, newPopulation):
+        ''' Function to attribute new values to a population DataFrame.
+            Guarantees correct fitness values for each state update.
+            Includes specimen viability evaluation and treatment.
+
+            Arguments:
+                newPopulation   : Population DataFrame with new state values
+                substitute      : Indicated what to do with non-viable specimens.
+                Options are as follows:
+                    'random': re-initializes non-viable vectors;
+                    'none'  : substitutes non-viable vectors with None over all dimensions;
+                    'edge'  : clips non-viable vectors to nearest edge of search space.
+
+            Returns: updatedPopulation, a population DataFrame with the input values
+            checked for viability and updated fitness column.
+        '''
+        # TODO: Split set_state and Exception Treatment in different methods
+        # Exception Treatment
+        # Checks if states are inside search space. If not, treat exceptions
+        logicArray = np.logical_or(np.less(newPopulation, self.xMin),
+                                   np.greater(newPopulation, self.xMax))
+
+        # Case/Switch python equivalent
+        # Select Exception treatment type
+        choices = {
+            'random':
+                pd.DataFrame(np.where(logicArray, 
+                                      Population(dimension=self.dim, lowerLimit=self.xMin, 
+                                                 upperLimit=self.xMax, initialPopulation=self.pop_size, 
+                                                 method=self.pop_corpus, opposition=self.opposition).create(),
+                                      newPopulation
+                                     )),
+            'none':
+                pd.DataFrame(np.where(logicArray, np.NaN, newPopulation)),
+            'edge':
+                newPopulation.clip(lower=self.xMin).clip(upper=self.xMax)
+        }
+        updatedPopulation = choices.get(self.substitute, KeyError("Please select a valid substitute key")).copy()
+
+        # Compute new Fitness        
+        if self.fitness_clusters is not None and self.maxFitnessEvals is not None and self.fitnessEvals + self.pop_size > self.maxFitnessEvals:
+            # If self.fitness_clusters > 0, then the updated generation is clustered and we only make evaluations for the cluster's 
+            # center. The final fitness for each specimen is the fitness of its corresponding cluster center
+            kmeans = KMeans(n_clusters=self.fitness_clusters, n_jobs=-1, verbose=False)
+
+            # Fitting kmeans with population
+            kmeans.fit(updatedPopulation)
+
+            # Getting cluster for each specimen 
+            df_clusters = pd.DataFrame(kmeans.labels_, columns=['index'])
+
+            # Finding cluster center fitness
+            cluster_fitness = pd.DataFrame(kmeans.cluster_centers_).apply(self.get_fitness, axis=1).copy()
+            df_fitness = pd.DataFrame(cluster_fitness, columns=['Fitness'])
+            df_fitness.reset_index(drop = False, inplace=True)
+
+            # Mapping each specimen to the cluster's center fitness
+            fitness = pd.merge(df_clusters, df_fitness, on='index', how='inner')['Fitness']
+        else:
+            fitness = updatedPopulation.apply(self.get_fitness, axis=1).copy()
+
+        updatedPopulation = updatedPopulation.assign(Fitness=fitness)
+
+        # Check if there is any NaN or None value in the population
+        if updatedPopulation.isna().any().any():
+            # Print number of NA values per specimen
+            print("\nWarning: NA values found in population\n")
+            print(updatedPopulation.drop(labels="Fitness", axis=1).isna().sum(axis=1))
+            input()
+
+        return updatedPopulation.copy()
+
+    def perform_crossover(self):
+        raise NotImplementedError
+
+    def generate(self):
+        # To be implemented in each child class
+        raise NotImplementedError
+
+    def optimize(self):
+        # To be implemented in each child class
+        raise NotImplementedError 
 
 class ParticleSwarmOptimizationSimple:
     def __init__(self, func_id, pop_size = 100, dim=10, max_iters=100):
@@ -512,159 +661,26 @@ class OppositionDifferentialEvolutionSimple(DifferentialEvolutionSimple):
 
 
 class DifferentialEvolution(EvolutionaryAlgorithm):
-    def __init__(self, dim=2, func_id=1, pop_size=30, 
+    def __init__(self, dim, func_id, pop_size=30, 
                  crossover = 'binomial', prob_cr=.9, pop_corpus='real', 
                  opposition=False, mutation='best', lambda_mutation=1, n_diff=1, 
                 F = [.8], substitute = 'random', fitness_clusters=None):
+        
         # Initialize superclass EvolutionaryAlgorithm
-        super().__init__(dim=dim, pop_size=pop_size)
-        self.xMin       = -100       # Search space limits
-        self.xMax       =  100       #
-
-        self.func_id    = func_id
-
+        super().__init__(dim=dim, func_id=func_id, pop_size=pop_size, prob_cr=prob_cr, crossover=crossover, 
+            mutation=mutation, prob_mutation=None, pop_corpus=pop_corpus, 
+            fitness_clusters=fitness_clusters)
+        
         # Parameters
         self.param_F    = F   # Mutation parameter F. If len(F) == n_diff, each F is applied 
                             # differently to each diff mutation
-        self.prob_cr = prob_cr   # Crossover probability
-        self.opposition = opposition
-        self.pop_corpus = pop_corpus # ['real', 'integer', 'binary']
-        self.mutation = mutation # ['best', 'rand', 'mixed' ]
         self.lambda_mutation = lambda_mutation # float in (0, 1)
         self.n_diff = n_diff # [1, 2, 3, ...] (usually 1 or 2)
-        self.substitute = substitute # ['random', 'edge', 'none'] what to do to outside specimen
-        self.crossover = crossover # ['bin', 'exp']
-        self.generations = 0
-        self.fitness_clusters = fitness_clusters # (int or None) whether to calculate fitness only to population kmeans center
-        self.maxFitnessEvals = None
-        self.population = None
         self.trialPopulation = None
         self.mutatedPopulation = None
         
-        # Fitness Function definition
-        if self.func_id < 23:
-            self.problem = pg.problem(pg.cec2014(prob_id=self.func_id, dim=self.dim))
-        else:
-            raise NotImplementedError("f_{:2d} not yet implemented".format(self.func_id))
-            
-        # Initialize population DataFrame and compute initial Fitness
-        self.init_states()
-
     def __str__(self):
         return "DE/" + self.mutation + "/" + str(self.n_diff) + "/" + self.crossover[:3]
-        
-    def init_states(self):
-        ''' Randomly initialize states and sigma values following a uniform initialization
-            between limits xMax and xMin. Assign state and fitness values to self.population.
-
-            population is a DataFrame with one row per individual, one column per
-            dimension and one extra for fitness values.
-
-            Arguments: None
-
-            Returns: self.population, DataFrame with dimensions (population size) by (dimension + 1).
-        '''
-        
-        specimen = Population(dimension=self.dim, lowerLimit=self.xMin, upperLimit=self.xMax, 
-                       initialPopulation=self.pop_size, method=self.pop_corpus, opposition=self.opposition).create()
-        
-        initPopulation = pd.DataFrame(specimen)
-
-        self.population = self.set_state(initPopulation)
-
-        initPopulation  = self.set_state(initPopulation)
-
-        # Keep only the fittest from set [pop, opposite_pop]
-        self.population = initPopulation.sort_values("Fitness", ascending=True, inplace=False).iloc[:self.pop_size, :]
-        self.population = self.population.reset_index(drop=True)
-        return self.population.copy()
-
-
-        self.generations += 1
-        return self.population.copy()
-    
-    def get_fitness(self, specimen):
-        ''' Wrapper that returns fitness value for state input specimen and increments
-            number of fitness evaluations.
-
-            Argument: specimen. State vector of length (dim).
-
-            Returns : Fitness for given input state as evaluated by target function.
-        '''
-        self.fitnessEvals +=1        
-        return self.problem.fitness(specimen)[0]
-    
-    def set_state(self, newPopulation):
-        ''' Function to attribute new values to a population DataFrame.
-            Guarantees correct fitness values for each state update.
-            Includes specimen viability evaluation and treatment.
-
-            Arguments:
-                newPopulation   : Population DataFrame with new state values
-                substitute      : Indicated what to do with non-viable specimens.
-                Options are as follows:
-                    'random': re-initializes non-viable vectors;
-                    'none'  : substitutes non-viable vectors with None over all dimensions;
-                    'edge'  : clips non-viable vectors to nearest edge of search space.
-
-            Returns: updatedPopulation, a population DataFrame with the input values
-            checked for viability and updated fitness column.
-        '''
-        # TODO: Split set_state and Exception Treatment in different methods
-        # Exception Treatment
-        # Checks if states are inside search space. If not, treat exceptions
-        logicArray = np.logical_or(np.less(newPopulation, self.xMin),
-                                   np.greater(newPopulation, self.xMax))
-
-        # Case/Switch python equivalent
-        # Select Exception treatment type
-        choices = {
-            'random':
-                pd.DataFrame(np.where(logicArray, 
-                                      Population(dimension=self.dim, lowerLimit=self.xMin, 
-                                                 upperLimit=self.xMax, initialPopulation=self.pop_size, 
-                                                 method=self.pop_corpus, opposition=self.opposition).create(),
-                                      newPopulation
-                                     )),
-            'none':
-                pd.DataFrame(np.where(logicArray, np.NaN, newPopulation)),
-            'edge':
-                newPopulation.clip(lower=self.xMin).clip(upper=self.xMax)
-        }
-        updatedPopulation = choices.get(self.substitute, KeyError("Please select a valid substitute key")).copy()
-
-        # Compute new Fitness        
-        if self.fitness_clusters is not None and self.maxFitnessEvals is not None and self.fitnessEvals + self.pop_size > self.maxFitnessEvals:
-            # If self.fitness_clusters > 0, then the updated generation is clustered and we only make evaluations for the cluster's 
-            # center. The final fitness for each specimen is the fitness of its corresponding cluster center
-            kmeans = KMeans(n_clusters=self.fitness_clusters, n_jobs=-1, verbose=False)
-
-            # Fitting kmeans with population
-            kmeans.fit(updatedPopulation)
-
-            # Getting cluster for each specimen 
-            df_clusters = pd.DataFrame(kmeans.labels_, columns=['index'])
-
-            # Finding cluster center fitness
-            cluster_fitness = pd.DataFrame(kmeans.cluster_centers_).apply(self.get_fitness, axis=1).copy()
-            df_fitness = pd.DataFrame(cluster_fitness, columns=['Fitness'])
-            df_fitness.reset_index(drop = False, inplace=True)
-
-            # Mapping each specimen to the cluster's center fitness
-            fitness = pd.merge(df_clusters, df_fitness, on='index', how='inner')['Fitness']
-        else:
-            fitness = updatedPopulation.apply(self.get_fitness, axis=1).copy()
-
-        updatedPopulation = updatedPopulation.assign(Fitness=fitness)
-
-        # Check if there is any NaN or None value in the population
-        if updatedPopulation.isna().any().any():
-            # Print number of NA values per specimen
-            print("\nWarning: NA values found in population\n")
-            print(updatedPopulation.drop(labels="Fitness", axis=1).isna().sum(axis=1))
-            input()
-
-        return updatedPopulation.copy()
     
     def mutate_differential(self, indexes, method='best'):
         """
@@ -834,8 +850,7 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
 
         return errorHist, fitnessHist
 
-    def setMaxFitnessEvals(self, maxFitnessEvals):
-        self.maxFitnessEvals = maxFitnessEvals
+    
 
 
 class OppositionDifferentialEvolution(DifferentialEvolution):
