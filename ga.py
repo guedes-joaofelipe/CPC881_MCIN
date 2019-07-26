@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import itertools
 
 from evolution import EvolutionaryAlgorithm
 import mutation as m
@@ -7,15 +8,18 @@ import crossover as c
 import selection as s
 
 class GeneticAlgorithm(EvolutionaryAlgorithm):
-    def __init__(self, dim, func_id, pop_size, prob_mutation=.2, mutation='uniform', 
-        prob_cr=.8, crossover='onePointCrossOver', elitism=1, fitness_clusters=None, pop_corpus='real'):
+    def __init__(self, dim, func_id, pop_size, prob_mutation=.2, mutation='uniform', selection='tournament',
+        parents_number = 5, prob_cr=.8, crossover='onePointCrossOver', elitism=1, fitness_clusters=None, 
+        pop_corpus='real'):
 
         # Initialize superclass EvolutionaryAlgorithm
         super().__init__(dim=dim, func_id=func_id, pop_size=pop_size, prob_cr=prob_cr, crossover=crossover, 
-            mutation=mutation, prob_mutation=None, pop_corpus=pop_corpus, 
+            mutation=mutation, prob_mutation=prob_mutation, pop_corpus=pop_corpus, 
             fitness_clusters=fitness_clusters)
 
         self.elitism = elitism
+        self.selection = selection
+        self.parents_number = parents_number
         
     def __str__(self):
         return "GA/" + self.mutation + "/" + str(self.elitism) + "/" + self.crossover[:3]
@@ -32,59 +36,40 @@ class GeneticAlgorithm(EvolutionaryAlgorithm):
 
         return individual
 
-    def select_elite(self, parents):
-        return parents[:self.elitism]
-
-    def generate(self, selection, parents_number):
+    def generate(self):
         # returns new population
 
         # Selecting parents        
-        parents = s.makeSelection(self.population.iloc[:, :-1]), 
-                                self.population['Fitness'], 
-                                method=selection, N=parents_number, ascending=False)
+        parents = s.makeSelection(self.population, method=self.selection, N=self.parents_number, ascending=True)
+        parents.drop(['Fitness'], axis=1, inplace=True)
 
-        # # Making crossover
-        next_generation = list()
+        # Elitism
+        next_population = parents.head(self.elitism).copy()
+        parents = np.array(parents)
+
+        # Making crossover        
         # Combining every parent 2x2
         for combination in list(itertools.product(parents, parents)):
             p1, p2 = combination[0], combination[1]
-            if not np.array_equal(p1,p2) and (np.random.rand() < self.prob_crossover):            
+            if (np.random.rand() < self.prob_cr) and not np.array_equal(p1,p2):            
                 child1, child2 = c.makeCrossOver(p1, p2, self.crossover, verbose=False)
-                next_generation.append(child1)
-                next_generation.append(child2)
-        
-        # # Mutation
-        # for index, individual in enumerate(next_generation):
-        #     if (np.random.rand() < prob_mutation):
-        #         individual = m.uniformMutation(individual,0.2,lowerLimit, upperLimit)
-        #         next_generation[index] = individual
 
-        # # Elitism
-        # for best_parent in parents[:elitism]:
-        #     next_generation.append(best_parent)
-            
-        # # Evaluating next generation
-        # generation_eval = np.array([])
-        # for individual in next_generation:
-        #     generation_eval = np.append(generation_eval, e.cecFunction(function_number, individual, dim))
-
-        # next_generation = np.array(next_generation)    
-        
-        # generations['individuals'].append(next_generation)
-        # generations['evaluations'].append(generation_eval)
-
-
-        self.mutate()
-        self.perform_crossover()
-        self.select_survivor()
+                # Mutation
+                child1 = m.uniformMutation(child1,self.prob_mutation,self.xMin, self.xMax)
+                child2 = m.uniformMutation(child2,self.prob_mutation,self.xMin, self.xMax)
+                
+                # Appending new children to dataframe
+                next_population.loc[next_population.shape[0]] = np.array(child1)
+                next_population.loc[next_population.shape[0]] = np.array(child2)
+   
+        self.population  = self.set_state(next_population)        
         self.generations += 1
 
         return self.population
 
     def optimize(self, target, max_f_evals='auto', max_generations=None, target_error=10e-8, verbose=True):
         """
-            returns errorHist and fitnessHist which are (self.generations, self.pop_size)
-        
+            returns errorHist and fitnessHist which are (self.generations, self.pop_size)        
         """
         if max_f_evals == 'auto':
             max_f_evals = 10000*self.dim
@@ -135,3 +120,10 @@ class GeneticAlgorithm(EvolutionaryAlgorithm):
 
         return errorHist, fitnessHist
 
+if __name__ == "__main__":
+    ga = GeneticAlgorithm(dim=10, func_id=1, pop_size=15)
+
+    print ('Initial population: ', ga.population.shape)    
+    print ('-'*10)
+
+    ga.optimize(target=1e-8, max_f_evals='auto', max_generations=None, target_error=10e-8, verbose=True)

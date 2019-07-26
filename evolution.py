@@ -110,7 +110,7 @@ class EvolutionaryAlgorithm:
             'random':
                 pd.DataFrame(np.where(logicArray, 
                                       Population(dimension=self.dim, lowerLimit=self.xMin, 
-                                                 upperLimit=self.xMax, initialPopulation=self.pop_size, 
+                                                 upperLimit=self.xMax, initialPopulation=newPopulation.shape[0], 
                                                  method=self.pop_corpus, opposition=self.opposition).create(),
                                       newPopulation
                                      )),
@@ -152,7 +152,7 @@ class EvolutionaryAlgorithm:
             print(updatedPopulation.drop(labels="Fitness", axis=1).isna().sum(axis=1))
             input()
 
-        return updatedPopulation.copy()
+        return updatedPopulation.sort_values(by=['Fitness']).copy()
 
     def perform_crossover(self):
         raise NotImplementedError
@@ -796,7 +796,7 @@ class DifferentialEvolution(EvolutionaryAlgorithm):
         
         return self.population
     
-    def optimize(self, target, max_f_evals='auto', max_generations=None, target_error=10e-8, verbose=True):
+    def optimize(self, max_f_evals='auto', max_generations=None, target_error=10e-8, verbose=True):
         """
             returns errorHist and fitnessHist which are (self.generations, self.pop_size)
         

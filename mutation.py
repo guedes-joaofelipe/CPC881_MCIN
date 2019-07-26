@@ -18,17 +18,20 @@ def creepMutation(parent, probability, lower, upper):
 
 #Float Representation
 def uniformMutation(parent, probability, lower, upper):
-    for i in range(len(parent)):
-        if (np.random.rand() < probability):
-            parent[i] = (upper - lower)*(np.random.rand()) + lower
-    return parent        
+    arr_random = np.random.rand(len(parent))    
+    arr_substitute = (upper - lower)*(arr_random) + lower    
+    return np.where(arr_random < probability, arr_substitute, parent)
+
 
 def main():
     arr = np.array([[1, 0], [0, 1]])
-    probability = .8
-    print ('Binary mutation (prob={}): \n{} \n>> \n{}'.format(probability, arr, binaryMutation(arr, probability)))
-    print ('Integer resetting (prob={}): \n{} \n>> \n{}'.format(probability, arr, integerRandomResetting(arr, probability, 0, 5)))
-    print(uniformMutation(p.initializePopulationReal(5, 0 ,5, 1), 0.5, 0, 5))
+    probability = -1
+    # print ('Binary mutation (prob={}): \n{} \n>> \n{}'.format(probability, arr, binaryMutation(arr, probability)))
+    # print ('Integer resetting (prob={}): \n{} \n>> \n{}'.format(probability, arr, integerRandomResetting(arr, probability, 0, 5)))
+    population = p.Population(initialPopulation=4, lowerLimit=-100, upperLimit=100, dimension=4).create()
+    print(population)
+
+    print (uniformMutation(population[0], probability, -100, 100))
 
 if __name__ == "__main__":
     main()        
