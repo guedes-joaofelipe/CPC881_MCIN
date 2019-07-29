@@ -143,3 +143,4 @@ venv.bak/
 .mypy_cache/
 
 ./Notebooks/Output_Notebooks/
+./Notebooks/Output_Notebooks/*

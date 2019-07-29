@@ -29,7 +29,10 @@ def run_notebook(dict_parameters):
 if __name__ == '__main__':
     
     df_parameters = pd.read_excel('./experiments_parameters.xlsx')    
-    df_parameters.replace(to_replace={'None': None}, value=None, method=None, inplace=True)    
+    df_parameters.replace(to_replace={'None': None}, value=None, method=None, inplace=True) 
+
+    
+    ###################################################################################
     processes = list()    
     for dict_parameters in df_parameters.to_dict(orient='records'):
         if dict_parameters['active']:      
@@ -40,6 +43,24 @@ if __name__ == '__main__':
 
     for process in processes:
         process.join()
+    ###################################################################################
+    ###################################################################################
+    # for funcId in df_parameters['funcId'].unique():
+    #     # Separating analysis for each funcId sequentially
+    #     df_parameters_func = df_parameters[df_parameters['funcId'] == funcId].reset_index(drop = True).copy()
 
+    #     processes = list()    
+    #     for dict_parameters in df_parameters_func.to_dict(orient='records'):
+    #         if dict_parameters['active']:      
+    #             print (list(dict_parameters.values()))      
+    #             p = multiprocessing.Process(target=run_notebook, args=(dict_parameters,))
+    #             processes.append(p)
+    #             p.start()    
+
+    #     for process in processes:
+    #         process.join()
+
+    #     print ("End of experiments for funcId = {}".format(funcId))
+    ###################################################################################
     print ("End of experiments")
 # python papermill_plot_run.py -d=ML1M -n=10 -r=30 -f=5 -m=MostPopular,ItemKNN,NMF
