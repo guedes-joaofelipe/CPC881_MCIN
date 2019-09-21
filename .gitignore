@@ -2,7 +2,10 @@
 #test*
 
 # Results folder
-results*/
+# results*/
+# results/
+**hist.tsv
+
 
 # Prerequisites
 *.d
@@ -110,6 +113,7 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+./Notebooks/Output_Notebooks/
 
 # pyenv
 .python-version
@@ -142,5 +146,5 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-./Notebooks/Output_Notebooks/
-./Notebooks/Output_Notebooks/*
+# Windows file 
+**/desktop.ini

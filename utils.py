@@ -25,6 +25,26 @@ def getOppositeNumber(x, infLim, supLim, k=1.0):
     x_opposite = k*(infLim + supLim) - x
     return x_opposite
 
+def getQuasiOppositeNumber(x, infLim, supLim, k=1.0):
+    ''' Compute quasi-opposite number in relation to the n-dimensional real input x.
+        Input must be limited to [infLim, supLim] in every dimension.
+
+        Returns x_quasi_opposite
+    '''
+    x_opposite = getOppositeNumber(x, infLim, supLim, k=k)
+    x_middle = (infLim+supLim)/2
+    
+    @np.vectorize
+    def aux_quasi_opposite(x_opposite, x_middle):        
+        if (x_opposite < x_middle):
+            x_quasi_opposite = x_middle + (x_opposite - x_middle)*np.random.random()
+        else:
+            x_quasi_opposite = x_opposite + (x_middle-x_opposite)*np.random.random()    
+        return x_quasi_opposite    
+    
+    x_quasi_opposite = aux_quasi_opposite(x_opposite, x_middle)    
+    return x_quasi_opposite
+
 def make_function_table(data, num_runs, scale='auto'):
     if scale == 'auto':
         scale = list(range(data.shape[0]))
@@ -293,3 +313,14 @@ class ProgressBar:
 #
 #
 #     return data1
+
+if __name__ == "__main__":
+    x_sup = 100
+    x_inf = -100
+    x = [1,1]
+
+    res = getOppositeNumber(x, x_inf, x_sup)
+    print (res)
+
+    res = getQuasiOppositeNumber(x, x_inf, x_sup)
+    print (res)

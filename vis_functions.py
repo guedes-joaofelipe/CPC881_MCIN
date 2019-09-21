@@ -111,3 +111,27 @@ def plot_evolution(paths, save=False, fig_name="Error evolution plot", show=True
                         orientation='portrait', bbox_inches='tight')
 
     return fig
+
+if __name__ == "__main__":
+    import pygmo                as pg    
+    import matplotlib.pyplot    as plt
+    from mpl_toolkits.mplot3d   import Axes3D
+
+    dim         = 2
+    functionId  = 14
+    infLim      = -100
+    supLim      = +100
+    numPoints   = 1000
+
+    x = np.linspace(infLim, supLim, num=numPoints)
+    y = np.linspace(infLim, supLim, num=numPoints)
+    X, Y = np.meshgrid(x, y)
+
+    # for functionId in range(1, 22):
+    prob = pg.problem(pg.cec2014(prob_id=functionId, dim=dim))
+    Z = np.zeros((len(X), len(Y)))
+    for i in range(len(X)):
+            for j in range(len(Y)):
+                    Z[i,j] = prob.fitness([X[i,j], Y[i,j]])
+
+    plot_3d(X, Y, Z, save='png', fig_name="Function {} 3D Plot".format(functionId), show=True)
