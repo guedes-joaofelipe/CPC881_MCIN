@@ -1,0 +1,5 @@
+Algorithm,Fi - D10,Best,Worst,Median,Mean,Std Dev,Success Rate (%),Elapsed Time (min)
+QODE/best/1/bin,F2,3.41E-09,9.99E-09,8.89E-09,8.49E-09,1.32E-09,100.00,56.28
+QODE/best/1/bin,F1,5.40E-09,9.99E-09,9.36E-09,9.06E-09,1.05E-09,100.00,70.3
+QODE/best/1/bin,F6,4.00E-03,3.62E+00,1.06E+00,1.16E+00,9.19E-01,0.00,106.25
+QODE/best/1/bin,F7,9.86E-03,1.61E+00,1.23E-01,2.37E-01,3.14E-01,0.00,150.28

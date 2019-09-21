@@ -5,6 +5,7 @@
 # results*/
 # results/
 **hist.tsv
+**log.tsv
 
 
 # Prerequisites
